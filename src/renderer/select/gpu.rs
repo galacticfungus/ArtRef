@@ -1,32 +1,14 @@
 use crate::renderer::{QueueFamily, Features, Feature, PciVendor};
+use super::Gpu;
 
 use ash::vk;
 
 use std::ffi::{CStr};
 use std::os::raw::c_char;
 
-#[derive(Clone)]
 // Represents a Gpu available on the local system
-pub struct Gpu {
-    pub(crate) device_handle: vk::PhysicalDevice,
-    pub(crate) queue_families: Vec<QueueFamily>,
-    pub(crate) api_version: u32,
-    pub(crate) driver_version: u32,
-    pub(crate) vendor_id: PciVendor,
-    pub(crate) device_id: u32,
-    pub(crate) device_name: [i8; ash::vk::MAX_PHYSICAL_DEVICE_NAME_SIZE],
-    pub(crate) device_type: vk::PhysicalDeviceType,
-    pub(crate) available_extensions: Vec<vk::ExtensionProperties>,
-    pub(crate) extensions_to_load: Vec<&'static CStr>,
-    pub(crate) device_features: vk::PhysicalDeviceFeatures,
-    pub(crate) enabled_features: vk::PhysicalDeviceFeatures,
-    pub(crate) surface_capabilities: vk::SurfaceCapabilitiesKHR,
-    pub(crate) surface_formats: Vec<vk::SurfaceFormatKHR>,
-    pub(crate) present_modes: Vec<vk::PresentModeKHR>,
-    // pipelinecacheID,
-    // limits,
-    // sparse_properties,
-}
+// We derive clone for when we are returning an error
+// and must take ownership of a borrowed value
 
 impl Gpu {
     pub fn new(
@@ -48,10 +30,8 @@ impl Gpu {
             device_id: properties.device_id,
             vendor_id: PciVendor::from(properties.vendor_id),
             driver_version: properties.driver_version,
-            extensions_to_load: Vec::default(),
             available_extensions,
             device_features,
-            enabled_features: Default::default(),
             surface_capabilities,
             surface_formats,
             present_modes,
@@ -70,14 +50,6 @@ impl Gpu {
             return true;
         }
         false
-    }
-
-    pub fn has_geo_shader(&self) -> bool {
-        self.device_features.geometry_shader > 0
-    }
-
-    pub fn has_tesselation_shader(&self) -> bool {
-        self.device_features.tessellation_shader > 0
     }
 
     pub fn has_feature(&self, feature: &Features) -> bool {
@@ -151,35 +123,15 @@ impl Gpu {
         self.device_handle
     }
 
-    pub fn feature(&mut self, feature: &Features) -> Feature {
+    pub fn feature(&mut self, feature: &Features) -> bool {
         match feature {
-            Features::GeometryShader => Feature::new(
-                self.device_features.geometry_shader > 0,
-                &mut self.enabled_features.geometry_shader,
-            ),
-            Features::TesselationShader => Feature::new(
-                self.device_features.tessellation_shader > 0,
-                &mut self.enabled_features.tessellation_shader,
-            ),
+            Features::GeometryShader => self.device_features.geometry_shader > 0,
+            Features::TesselationShader => self.device_features.tessellation_shader > 0,
         }
     }
 
-    pub fn add_device_extensions(&mut self, mut extensions_to_load: Vec<&'static CStr>) {
-        // TODO: Deal with duplicates by using a Hashmap
-        // TODO: Ensure that the extension string is being pushed and not a reference to it
-        self.extensions_to_load.append(&mut extensions_to_load);
-    }
-
-    pub fn get_extensions(&self) -> Vec<*const c_char> {
-        // Must return a Vec otherwise the list of pointers will be freed
-        self.extensions_to_load
-            .iter()
-            .map(|ext| (*ext).as_ptr())
-            .collect()
-    }
-
     pub fn get_features(&self) -> &vk::PhysicalDeviceFeatures {
-        &self.enabled_features
+        &self.device_features
     }
 }
 
@@ -275,44 +227,10 @@ pub struct TestGpuBuilder {
                 queue_families: self.queues,
                 device_handle: vk::PhysicalDevice::default(),
                 available_extensions: Vec::default(),
-                extensions_to_load: Vec::default(),
                 device_features: vk::PhysicalDeviceFeatures::default(),
-                enabled_features: Default::default(),
                 surface_formats: Default::default(),
                 surface_capabilities: vk::SurfaceCapabilitiesKHR::default(),
                 present_modes: Vec::default(),
             }
         }
     }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_adding_device_extensions() {
-        let mut gpu = TestGpuBuilder::new()
-            .pick_device_type(vk::PhysicalDeviceType::DISCRETE_GPU)
-            .pick_vendor(PciVendor::NVidia)
-            .create_device();
-        println!("Before adding extensions: {:?}\n", gpu.extensions_to_load);
-        let mut extensions_to_add = Vec::new();
-        extensions_to_add.push(ash::extensions::khr::Swapchain::name());
-        gpu.add_device_extensions(extensions_to_add);
-        println!("After adding extensions: {:?}\n", gpu.extensions_to_load);
-    }
-
-    #[test]
-    fn test_gpu_feature_api() {
-        use crate::renderer::features::Features;
-        // TODO: Add 
-        let mut gpu = TestGpuBuilder::new()
-                            .create_device();
-        println!("Test is {:?}", gpu);
-        // b.feature(Features::GeometryShader);
-        let mut c = gpu.feature(&Features::GeometryShader);
-        if c.is_available() {
-            c.enable();
-        }
-    }
-}

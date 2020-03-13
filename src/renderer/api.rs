@@ -243,7 +243,7 @@ pub struct VulkanApi {
 
 impl VulkanApi {
     pub fn create_selector(&self, surface: &mut Surface) -> Result<DeviceSelector, error::Error> {
-        DeviceSelector::new(&self.instance, &self.entry, surface)
+        DeviceSelector::new(&self.instance, surface)
     }
 
     pub fn extension_loaded(&self, extension: super::Extensions) -> bool {

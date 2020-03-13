@@ -331,8 +331,98 @@ impl<'a> QueueManager<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::renderer::select::TestGpuBuilder;
 
+    pub struct TestConfigureDeviceBuilder<'a> {
+        queue_families: Vec<QueueFamily>,
+        api_version: Option<u32>,
+        driver_version: Option<u32>,
+        vendor_id: Option<PciVendor>,
+        instance: &'a ash::Instance,
+        device_name: Option<[i8; ash::vk::MAX_PHYSICAL_DEVICE_NAME_SIZE]>,
+        device_type: Option<vk::PhysicalDeviceType>,
+        // available_extensions: Option<Vec<vk::ExtensionProperties>>,
+        // extensions_to_load: Option<Vec<&'static CStr>>,
+        // device_features: Option<vk::PhysicalDeviceFeatures>,
+        // enabled_features: Option<vk::PhysicalDeviceFeatures>,
+        // surface_capabilities: Option<vk::SurfaceCapabilitiesKHR>,
+        // surface_formats: Option<Vec<vk::SurfaceFormatKHR>>,
+        // present_modes: Option<Vec<vk::PresentModeKHR>>,
+    }
+
+    impl<'a> TestConfigureDeviceBuilder<'a> {
+        pub fn new(instance: &ash::Instance) -> TestConfigureDeviceBuilder {
+            TestConfigureDeviceBuilder {
+                instance,
+                api_version: None,
+                driver_version: None,
+                vendor_id: None,
+                device_name: None,
+                device_type: None,
+                queue_families: Vec::default(),
+            }
+        }
+
+        pub fn pick_vendor(mut self, vendor: PciVendor) -> Self {
+            self.vendor_id = Some(vendor);
+            self
+        }
+
+        pub fn pick_device_type(mut self, device_type: vk::PhysicalDeviceType) -> Self {
+            self.device_type = Some(device_type);
+            self
+        }
+
+        pub fn pick_api_version(mut self, major: u32, minor: u32) {
+            self.api_version = Some(ash::vk_make_version!(major, minor, 0));
+        }
+
+        pub fn pick_driver_version(mut self, major: u32, minor: u32, build: u32) {
+            self.driver_version = Some(ash::vk_make_version!(major, minor, 0));
+        }
+
+        pub fn pick_device_name(mut self, device_name: &str) -> Self {
+            let mut device_name_array: [i8; vk::MAX_PHYSICAL_DEVICE_NAME_SIZE] = [0; vk::MAX_PHYSICAL_DEVICE_NAME_SIZE];
+            assert!(device_name_array.len() < vk::MAX_PHYSICAL_DEVICE_NAME_SIZE);
+            for (i, letter) in device_name.as_bytes().iter().enumerate() {
+                device_name_array[i] = *letter as i8;
+            }
+            self.device_name = Some(device_name_array);
+            self
+        }
+
+        pub fn add_queue(mut self, operations_supported: vk::QueueFlags, slots_available: u32, presentable: bool) -> Self {
+            let test_family = QueueFamily::create_test_family(self.queue_families.len(), operations_supported, slots_available, presentable);
+            self.queue_families.push(test_family);
+            self
+        }
+
+        pub fn build(self) -> ConfigureDevice<'a> {
+            ConfigureDevice {
+                instance: self.instance,
+                api_version: self.api_version.unwrap_or(Default::default()),
+                device_id: 0,
+                vendor_id: self.vendor_id.unwrap_or(Default::default()),
+                device_type: self.device_type.unwrap_or(Default::default()),
+                driver_version: self.driver_version.unwrap_or(Default::default()),
+                device_name: self.device_name.unwrap_or_else(|| {
+                    let mut default_device_name: [i8; vk::MAX_PHYSICAL_DEVICE_NAME_SIZE] = [0; vk::MAX_PHYSICAL_DEVICE_NAME_SIZE];
+                    for (i, letter) in b"Default Test Device\0".into_iter().enumerate() {
+                        default_device_name[i] = *letter as i8;
+                    }
+                    default_device_name
+                }),
+                queue_families: self.queue_families,
+                device_handle: vk::PhysicalDevice::default(),
+                available_extensions: Vec::default(),
+                extensions_to_load: Vec::default(),
+                device_features: vk::PhysicalDeviceFeatures::default(),
+                enabled_features: Default::default(),
+                surface_formats: Default::default(),
+                surface_capabilities: vk::SurfaceCapabilitiesKHR::default(),
+                present_modes: Vec::default(),
+            }
+        }
+    }
     use ash::version::EntryV1_0;
 
     impl<'a> ConfigureDevice<'a> {
@@ -342,70 +432,41 @@ mod tests {
             unsafe { entry.create_instance(&create_info, None) }
                 .expect("Failed to create instance")
         }
-
-        pub fn create_test_configure(
-            instance: &'a ash::Instance,
-            test_gpu: crate::renderer::Gpu,
-        ) -> ConfigureDevice<'a> {
-            ConfigureDevice {
-                instance,
-                device_handle: test_gpu.device_handle,
-                queue_families: test_gpu.queue_families,
-                api_version: test_gpu.api_version,
-                driver_version: test_gpu.driver_version,
-                vendor_id: test_gpu.vendor_id,
-                device_id: test_gpu.device_id,
-                device_name: test_gpu.device_name,
-                device_type: test_gpu.device_type,
-                available_extensions: test_gpu.available_extensions,
-                extensions_to_load: test_gpu.extensions_to_load,
-                device_features: test_gpu.device_features,
-                enabled_features: test_gpu.enabled_features,
-                surface_capabilities: test_gpu.surface_capabilities,
-                surface_formats: test_gpu.surface_formats,
-                present_modes: test_gpu.present_modes,
-            }
-        }
     }
 
     #[test]
     fn test_find_best_family() {
-        let gpu = TestGpuBuilder::new()
+        let instance = ConfigureDevice::create_test_instance();
+        let config = TestConfigureDeviceBuilder::new(&instance)
             .add_queue(vk::QueueFlags::GRAPHICS | vk::QueueFlags::COMPUTE | vk::QueueFlags::TRANSFER, 6, false)
             .add_queue(vk::QueueFlags::GRAPHICS | vk::QueueFlags::COMPUTE, 6, true)
             .add_queue(vk::QueueFlags::TRANSFER | vk::QueueFlags::SPARSE_BINDING, 4, false)
-            .create_device();        
-        let instance = ConfigureDevice::create_test_instance();
-        let config = ConfigureDevice::create_test_configure(&instance, gpu);
+            .build();
         let res = config.find_best_family(vk::QueueFlags::GRAPHICS, false);
         assert_eq!(res.unwrap(), 1);
     }
 
     #[test]
     fn find_best_family_with_present_test() {
-        let gpu = TestGpuBuilder::new()
+        let instance = ConfigureDevice::create_test_instance();
+        let config = TestConfigureDeviceBuilder::new(&instance)
             .add_queue(vk::QueueFlags::GRAPHICS | vk::QueueFlags::COMPUTE | vk::QueueFlags::TRANSFER, 6, true)
             .add_queue(vk::QueueFlags::GRAPHICS | vk::QueueFlags::COMPUTE, 6, false)
             .add_queue(vk::QueueFlags::TRANSFER | vk::QueueFlags::SPARSE_BINDING, 4, false)
-            .create_device();
+            .build();
         // Since the "best" queue doesn't support 
-        let instance = ConfigureDevice::create_test_instance();
-        let config = ConfigureDevice::create_test_configure(&instance, gpu);
         let res = config.find_best_family(vk::QueueFlags::GRAPHICS, true);
         assert_eq!(res.unwrap(), 0);
     }
 
     #[test]
     fn test_queue_creation() {
-        //test_device(vendor: PciVendor, device_type: vk::PhysicalDeviceType, queue_families: Vec<QueueFamily>) -> Self {
-        //create_test_family(index: usize, queue_types: vk::QueueFlags, queue_count: u32) -> QueueFamily {
-        let gpu = TestGpuBuilder::new()
+        let instance = ConfigureDevice::create_test_instance();
+        let mut config = TestConfigureDeviceBuilder::new(&instance)
             .add_queue(vk::QueueFlags::GRAPHICS | vk::QueueFlags::COMPUTE, 6, true)
             .add_queue(vk::QueueFlags::TRANSFER | vk::QueueFlags::SPARSE_BINDING, 4, false)
-            .create_device();
-        let instance = ConfigureDevice::create_test_instance();
-        let mut configure = ConfigureDevice::create_test_configure(&instance, gpu);
-        configure.define_queues(|mng| {
+            .build();
+        config.define_queues(|mng| {
                 // User needs to be able to check what is available
                 mng.create_queue_that_supports(vk::QueueFlags::GRAPHICS, 1.0, true);
                 mng.create_graphics_queue(1.0, true);
@@ -415,7 +476,7 @@ mod tests {
             })
             .expect("Failed to create the queues");
         // TODO: Test something
-        let queue_families = configure.queue_families;
+        let queue_families = config.queue_families;
         println!("{:?}", queue_families);
         assert_eq!(queue_families[0].queues_to_create().len(), 3);
         assert_eq!(queue_families[1].queues_to_create().len(), 1);
@@ -425,12 +486,11 @@ mod tests {
     fn test_queue_creation_conditional() {
         //test_device(vendor: PciVendor, device_type: vk::PhysicalDeviceType, queue_families: Vec<QueueFamily>) -> Self {
         //create_test_family(index: usize, queue_types: vk::QueueFlags, queue_count: u32) -> QueueFamily {
-        let gpu = TestGpuBuilder::new()
+        let instance = ConfigureDevice::create_test_instance();
+        let mut configure = TestConfigureDeviceBuilder::new(&instance)
             .add_queue(vk::QueueFlags::GRAPHICS | vk::QueueFlags::COMPUTE, 1, true)
             .add_queue(vk::QueueFlags::TRANSFER | vk::QueueFlags::SPARSE_BINDING, 1, false)
-            .create_device();
-        let instance = ConfigureDevice::create_test_instance();
-        let mut configure = ConfigureDevice::create_test_configure(&instance, gpu);
+            .build();
         configure.define_queues(|mng| {
                 // User needs to be able to check what queues are available
                 if mng.queues_that_support(vk::QueueFlags::GRAPHICS) > 1 {

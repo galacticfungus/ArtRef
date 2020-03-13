@@ -29,6 +29,9 @@ pub use create::ConfigureDevice;
 pub use swapchain::{Swapchain, ConfigureSwapchain};
 
 #[cfg(test)]
+pub use select::TestGpuBuilder;
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
