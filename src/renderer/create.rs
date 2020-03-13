@@ -5,7 +5,7 @@ use ash::vk;
 use std::ffi::CStr;
 use std::collections::HashMap;
 
-use super::Gpu;
+// use super::Gpu;
 use super::{QueueFamily, QueueToCreate, PciVendor, Features, features::Feature};
 use super::VulkanDevice;
 use crate::error;
@@ -36,8 +36,22 @@ pub struct ConfigureDevice<'a> {
 }
 
 impl<'a> ConfigureDevice<'a> {
-    pub fn new(instance: &'a ash::Instance, gpu: Gpu) -> ConfigureDevice<'a> {
-        let Gpu {vendor_id, device_features, api_version, device_handle, device_id, device_name, driver_version, enabled_features, extensions_to_load, present_modes, queue_families, device_type, available_extensions, surface_capabilities, surface_formats} = gpu;
+    pub fn new(instance: &'a ash::Instance, 
+        device_handle: vk::PhysicalDevice,
+        queue_families: Vec<QueueFamily>,
+        api_version: u32,
+        driver_version: u32,
+        vendor_id: PciVendor,
+        device_id: u32,
+        device_name: [i8; ash::vk::MAX_PHYSICAL_DEVICE_NAME_SIZE],
+        device_type: vk::PhysicalDeviceType,
+        available_extensions: Vec<vk::ExtensionProperties>,
+        extensions_to_load: Vec<&'static CStr>,
+        device_features: vk::PhysicalDeviceFeatures,
+        enabled_features: vk::PhysicalDeviceFeatures,
+        surface_capabilities: vk::SurfaceCapabilitiesKHR,
+        surface_formats: Vec<vk::SurfaceFormatKHR>,
+        present_modes: Vec<vk::PresentModeKHR>) -> ConfigureDevice<'a> {
         ConfigureDevice {
             instance,
             device_handle,
@@ -317,7 +331,7 @@ impl<'a> QueueManager<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::renderer::gpu::TestGpuBuilder;
+    use crate::renderer::select::TestGpuBuilder;
 
     use ash::version::EntryV1_0;
 
@@ -331,7 +345,7 @@ mod tests {
 
         pub fn create_test_configure(
             instance: &'a ash::Instance,
-            test_gpu: Gpu,
+            test_gpu: crate::renderer::Gpu,
         ) -> ConfigureDevice<'a> {
             ConfigureDevice {
                 instance,

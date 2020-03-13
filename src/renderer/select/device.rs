@@ -5,13 +5,11 @@ use ash::vk;
 use core::fmt::Debug;
 use std::ffi::CStr;
 
-use super::{Gpu, PciVendor, QueueFamily};
+use super::{Gpu};
+use crate::renderer::{PciVendor, QueueFamily, Features, Surface, ConfigureDevice};
 use crate::renderer::ExtensionManager;
 use crate::error;
 
-use super::create::ConfigureDevice;
-use super::Features;
-use super::Surface;
 
 pub struct DeviceSelector<'a> {
     instance: &'a ash::Instance,
@@ -373,7 +371,23 @@ impl<'a> DeviceSelector<'a> {
         // TODO: Is this really optimal, we can use some inherit qualities of the remaining devices to pick one, ie available memory
         let mut device_picked = self.suitable_devices.swap_remove(0);
         device_picked.add_device_extensions(extensions_to_load);
-        ConfigureDevice::new(self.instance, device_picked)
+        ConfigureDevice::new(
+            self.instance, 
+            device_picked.device_handle, 
+            device_picked.queue_families, 
+            device_picked.api_version, 
+            device_picked.driver_version,
+            device_picked.vendor_id,
+            device_picked.device_id,
+            device_picked.device_name,
+            device_picked.device_type,
+            device_picked.available_extensions,
+            device_picked.extensions_to_load,
+            device_picked.device_features,
+            device_picked.enabled_features,
+            device_picked.surface_capabilities,
+            device_picked.surface_formats,
+            device_picked.present_modes)
     }
 }
 
@@ -432,7 +446,8 @@ impl<'a> Debug for DeviceSelector<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::renderer::gpu::{Gpu, TestGpuBuilder};
+    use crate::renderer::Gpu;
+    use crate::renderer::select::TestGpuBuilder;
 
     // Creates the necessary Vulkan objects to perform a test
     pub fn init_vulkan() -> (ash::Entry, ash::Instance) {

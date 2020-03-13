@@ -1,12 +1,10 @@
-use super::features;
-use super::{QueueFamily, VulkanDevice};
+use crate::renderer::{QueueFamily, Features, Feature, PciVendor};
 
 use ash::vk;
 
 use std::ffi::{CStr};
 use std::os::raw::c_char;
 
-use super::PciVendor;
 #[derive(Clone)]
 // Represents a Gpu available on the local system
 pub struct Gpu {
@@ -82,10 +80,10 @@ impl Gpu {
         self.device_features.tessellation_shader > 0
     }
 
-    pub fn has_feature(&self, feature: &features::Features) -> bool {
+    pub fn has_feature(&self, feature: &Features) -> bool {
         match feature {
-            features::Features::GeometryShader => self.device_features.geometry_shader > 0,
-            features::Features::TesselationShader => self.device_features.tessellation_shader > 0,
+            Features::GeometryShader => self.device_features.geometry_shader > 0,
+            Features::TesselationShader => self.device_features.tessellation_shader > 0,
         }
     }
 
@@ -153,8 +151,7 @@ impl Gpu {
         self.device_handle
     }
 
-    pub fn feature(&mut self, feature: &features::Features) -> features::Feature {
-        use features::{Feature, Features};
+    pub fn feature(&mut self, feature: &Features) -> Feature {
         match feature {
             Features::GeometryShader => Feature::new(
                 self.device_features.geometry_shader > 0,
