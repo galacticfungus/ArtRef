@@ -2,11 +2,11 @@ use ash::version::DeviceV1_0;
 use ash::version::InstanceV1_0;
 use ash::vk;
 
+use std::ffi::CStr;
 use std::collections::HashMap;
 
-use super::features::Features;
 use super::Gpu;
-use super::{QueueFamily, QueueToCreate};
+use super::{QueueFamily, QueueToCreate, PciVendor, Features, features::Feature};
 use super::VulkanDevice;
 use crate::error;
 
@@ -17,31 +17,65 @@ use crate::error;
 // Responsible for creating the device, helps with queue creation as well as enabling features
 pub struct ConfigureDevice<'a> {
     instance: &'a ash::Instance,
-    gpu: Gpu,
+    device_handle: vk::PhysicalDevice,
+    queue_families: Vec<QueueFamily>,
+    api_version: u32,
+    driver_version: u32,
+    vendor_id: PciVendor,
+    device_id: u32,
+    device_name: [i8; ash::vk::MAX_PHYSICAL_DEVICE_NAME_SIZE],
+    device_type: vk::PhysicalDeviceType,
+    available_extensions: Vec<vk::ExtensionProperties>,
+    extensions_to_load: Vec<&'static CStr>,
+    device_features: vk::PhysicalDeviceFeatures,
+    enabled_features: vk::PhysicalDeviceFeatures,
+    surface_capabilities: vk::SurfaceCapabilitiesKHR,
+    surface_formats: Vec<vk::SurfaceFormatKHR>,
+    present_modes: Vec<vk::PresentModeKHR>,
     // queue_data: Vec<QueueFamilyData>,
 }
 
 impl<'a> ConfigureDevice<'a> {
     pub fn new(instance: &'a ash::Instance, gpu: Gpu) -> ConfigureDevice<'a> {
-        // let gpu_family_data = gpu.get_queue_families();
-        // let mut info = Vec::with_capacity(gpu_family_data.len());
-        // for (index, queue_family) in gpu_family_data.iter().enumerate() {
-        //     let queue_count = queue_family.get_total_queue_types();
-        //     let data = QueueFamilyData::new(queue_family.get_flags(), queue_family.get_total_queues(), index, queue_count);
-        //     info.push(data);
-        // }
+        let Gpu {vendor_id, device_features, api_version, device_handle, device_id, device_name, driver_version, enabled_features, extensions_to_load, present_modes, queue_families, device_type, available_extensions, surface_capabilities, surface_formats} = gpu;
         ConfigureDevice {
             instance,
-            gpu,
-            // queue_data: info,
+            device_handle,
+            queue_families,
+            api_version,
+            driver_version,
+            vendor_id,
+            device_id,
+            device_name,
+            device_type,
+            available_extensions,
+            extensions_to_load,
+            device_features,
+            enabled_features,
+            surface_capabilities,
+            surface_formats,
+            present_modes,
         }
     }
 
     // queues -- add_queue | based on families
 
+    pub fn feature(&mut self, feature: &Features) -> Feature {
+        match feature {
+            Features::GeometryShader => Feature::new(
+                self.device_features.geometry_shader > 0,
+                &mut self.enabled_features.geometry_shader,
+            ),
+            Features::TesselationShader => Feature::new(
+                self.device_features.tessellation_shader > 0,
+                &mut self.enabled_features.tessellation_shader,
+            ),
+        }
+    }
+
     // Will enable a device feature or return an error
     pub fn enable_feature(&mut self, requested_feature: Features) -> Result<&mut Self, error::Error> {
-        let gpu_feature = self.gpu.feature(&requested_feature);
+        let gpu_feature = self.feature(&requested_feature);
         if gpu_feature.is_available() {
             gpu_feature.enable();
             Ok(self)
@@ -52,7 +86,7 @@ impl<'a> ConfigureDevice<'a> {
 
     // Will see if a feature can be enabled and enable it if it is supported
     pub fn try_enable_feature(&mut self, feature: Features) -> &mut Self {
-        let feature = self.gpu.feature(&feature);
+        let feature = self.feature(&feature);
         feature.enable_if_able();
         self
     }
@@ -62,7 +96,7 @@ impl<'a> ConfigureDevice<'a> {
     where
         F: Fn(&mut QueueManager) -> (),
     {
-        let mut qm = QueueManager::new(self.gpu.get_queue_families());
+        let mut qm = QueueManager::new(self.queue_families.as_slice());
         get_queues_to_create(&mut qm);
 
         let QueueManager {
@@ -78,7 +112,7 @@ impl<'a> ConfigureDevice<'a> {
                     "Error handling not finished when a queue can not be constructed"
                 ),
             };
-            let families = self.gpu.get_mut_queue_families();
+            let families = self.queue_families.as_mut_slice();
             let family_to_use = &mut families[index];
             // let family_to_use = &mut self.queue_data[index];
             // The family_to_use must have space remaining or no best family would have been found
@@ -90,12 +124,12 @@ impl<'a> ConfigureDevice<'a> {
     pub fn create_device(self) -> VulkanDevice {
         // Create Vulkan structs from self.queues_to_create
         // Each family queue becomes a struct sent to
-        let Self { instance, gpu } = self;
+        // let Self { instance, gpu } = self;
 
         let mut queue_map = HashMap::new();
         let mut queues_to_submit = Vec::new();
         println!("Creating Queues");
-        for queue_family in gpu.get_queue_families().iter() {
+        for queue_family in self.queue_families.as_slice().iter() {
             println!("Processing {:?}", queue_family);
             let mut priorities = Vec::new();
             let queues_to_create = queue_family.queues_to_create();
@@ -125,18 +159,21 @@ impl<'a> ConfigureDevice<'a> {
 
         println!("Submitting Queues");
         // The queue map lets us map from creation index to queue index
-        let device_extensions = gpu.get_extensions();
+        let device_extensions: Vec<*const std::os::raw::c_char> = self.extensions_to_load
+                                .iter()
+                                .map(|ext| (*ext).as_ptr())
+                                .collect();
         let create_info = vk::DeviceCreateInfo {
             enabled_extension_count: device_extensions.len() as u32,
             pp_enabled_extension_names: device_extensions.as_ptr(),
-            p_enabled_features: gpu.get_features(),
+            p_enabled_features: &self.enabled_features,
             queue_create_info_count: queues_to_submit.len() as u32,
             p_queue_create_infos: queues_to_submit.as_ptr(),
             ..Default::default()
         };
         println!("Creating Device");
         // This should be safe as all data structures are in scope and there are no user parameters
-        let device = unsafe { instance.create_device(gpu.get_handle(), &create_info, None) }
+        let device = unsafe { self.instance.create_device(self.device_handle, &create_info, None) }
             .expect("Failed to create device");
         // Get a handle to each of the queues in the order they were created using queue_map as the map
         let mut queues = Vec::with_capacity(queue_map.keys().len());
@@ -146,13 +183,9 @@ impl<'a> ConfigureDevice<'a> {
             queues.push(queue);
         }
         println!("Returning RenderDevice");
-        // TODO: FromConfigureDevice for VulkanDevice
-        panic!("")
-        // VulkanDevice {
-        //     // gpu,
-        //     // queues,
-        //     // device,
-        // }
+        // TODO: Currently doesn't include extensions that have been loaded
+        panic!("");
+        // VulkanDevice::new(physical_device, device, )
     }
 
     // We prioritize queue families that provide the least functionality when allocating queues
@@ -160,7 +193,7 @@ impl<'a> ConfigureDevice<'a> {
         let mut best_result = 100;
         let mut best_index = None;
         // self.gpu.get_supported_queues()
-        for (index, family) in self.gpu.get_queue_families().iter().enumerate() {
+        for (index, family) in self.queue_families.as_slice().iter().enumerate() {
             // does current queue support wanted type
             if family.has_support_for(operations_needed, must_present) {
                 if family.is_full() == false {
@@ -181,6 +214,26 @@ impl<'a> ConfigureDevice<'a> {
         }
     }
 }
+
+// TODO: Need to destructure the GPU when it arrives in Configure Device
+// impl Into<VulkanDevice> for ConfigureDevice {
+//     fn into(self) -> VulkanDevice {
+//         VulkanDevice {
+//             api_version: self.api_version,
+//             driver_version: self.driver_version,
+//             vendor_id: self.vendor_id,
+//             device_id: self.device_id,
+//             device_name: self.device_name,
+//             physical_device: self.device_handle,
+//             queues: self.queue_families,
+//             device: self.,
+//             enabled_features: self.enabled_features,
+//             surface_capabilities: self.surface_capabilities,
+//             surface_formats: self.surface_formats,
+//             present_modes: self.present_modes,
+//         }
+//     }
+// }
 
 #[derive(Debug)]
 // This class does not create any actual queues it merely gathers all the queues that the user wants to
@@ -267,20 +320,8 @@ mod tests {
     use crate::renderer::gpu::TestGpuBuilder;
 
     use ash::version::EntryV1_0;
-    use ash::vk_make_version;
 
     impl<'a> ConfigureDevice<'a> {
-        pub fn use_test_device(
-            entry: ash::Entry,
-            instance: &'a ash::Instance,
-            test_gpu: Gpu,
-        ) -> ConfigureDevice {
-            ConfigureDevice {
-                instance,
-                gpu: test_gpu,
-            }
-        }
-
         pub fn create_test_instance() -> ash::Instance {
             let entry = ash::Entry::new().expect("Failed to load Vulkan");
             let create_info = vk::InstanceCreateInfo::default();
@@ -294,7 +335,21 @@ mod tests {
         ) -> ConfigureDevice<'a> {
             ConfigureDevice {
                 instance,
-                gpu: test_gpu,
+                device_handle: test_gpu.device_handle,
+                queue_families: test_gpu.queue_families,
+                api_version: test_gpu.api_version,
+                driver_version: test_gpu.driver_version,
+                vendor_id: test_gpu.vendor_id,
+                device_id: test_gpu.device_id,
+                device_name: test_gpu.device_name,
+                device_type: test_gpu.device_type,
+                available_extensions: test_gpu.available_extensions,
+                extensions_to_load: test_gpu.extensions_to_load,
+                device_features: test_gpu.device_features,
+                enabled_features: test_gpu.enabled_features,
+                surface_capabilities: test_gpu.surface_capabilities,
+                surface_formats: test_gpu.surface_formats,
+                present_modes: test_gpu.present_modes,
             }
         }
     }
@@ -346,7 +401,7 @@ mod tests {
             })
             .expect("Failed to create the queues");
         // TODO: Test something
-        let queue_families = configure.gpu.get_queue_families();
+        let queue_families = configure.queue_families;
         println!("{:?}", queue_families);
         assert_eq!(queue_families[0].queues_to_create().len(), 3);
         assert_eq!(queue_families[1].queues_to_create().len(), 1);
@@ -379,7 +434,7 @@ mod tests {
             })
             .expect("Failed to create the queues");
         // TODO: Test something
-        let queue_families = configure.gpu.get_queue_families();
+        let queue_families = configure.queue_families;
         assert_eq!(queue_families[0].queues_to_create().len(), 1);
         assert_eq!(queue_families[1].queues_to_create().len(), 1);
     }

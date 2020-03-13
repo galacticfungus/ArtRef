@@ -18,7 +18,7 @@ pub use api::VulkanConfig;
 pub use extensions::ExtensionManager;
 pub use extensions::Extensions;
 pub use layers::Layers;
-pub use features::Features;
+pub use features::{Features, Feature};
 pub use gpu::Gpu;
 pub use queues::{QueueFamily, QueueToCreate};
 pub use select::{DeviceSelector, DeviceFilter, FiltersDevices, };
@@ -26,6 +26,7 @@ pub use surface::Surface;
 pub use vendor::PciVendor;
 pub use render::RenderDevice;
 pub use device::VulkanDevice;
+pub use create::ConfigureDevice;
 pub use swapchain::{Swapchain, ConfigureSwapchain};
 
 #[cfg(test)]

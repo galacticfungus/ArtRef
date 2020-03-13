@@ -1,5 +1,5 @@
 use super::features;
-use super::queues::{QueueFamily};
+use super::{QueueFamily, VulkanDevice};
 
 use ash::vk;
 
@@ -8,22 +8,23 @@ use std::os::raw::c_char;
 
 use super::PciVendor;
 #[derive(Clone)]
+// Represents a Gpu available on the local system
 pub struct Gpu {
-    device_handle: vk::PhysicalDevice,
-    queue_families: Vec<QueueFamily>,
-    api_version: u32,
-    driver_version: u32,
-    vendor_id: PciVendor,
-    device_id: u32,
-    device_name: [i8; ash::vk::MAX_PHYSICAL_DEVICE_NAME_SIZE],
-    device_type: vk::PhysicalDeviceType,
-    available_extensions: Vec<vk::ExtensionProperties>,
-    extensions_to_load: Vec<&'static CStr>,
-    device_features: vk::PhysicalDeviceFeatures,
-    enabled_features: vk::PhysicalDeviceFeatures,
-    surface_capabilities: vk::SurfaceCapabilitiesKHR,
-    surface_formats: Vec<vk::SurfaceFormatKHR>,
-    present_modes: Vec<vk::PresentModeKHR>,
+    pub(crate) device_handle: vk::PhysicalDevice,
+    pub(crate) queue_families: Vec<QueueFamily>,
+    pub(crate) api_version: u32,
+    pub(crate) driver_version: u32,
+    pub(crate) vendor_id: PciVendor,
+    pub(crate) device_id: u32,
+    pub(crate) device_name: [i8; ash::vk::MAX_PHYSICAL_DEVICE_NAME_SIZE],
+    pub(crate) device_type: vk::PhysicalDeviceType,
+    pub(crate) available_extensions: Vec<vk::ExtensionProperties>,
+    pub(crate) extensions_to_load: Vec<&'static CStr>,
+    pub(crate) device_features: vk::PhysicalDeviceFeatures,
+    pub(crate) enabled_features: vk::PhysicalDeviceFeatures,
+    pub(crate) surface_capabilities: vk::SurfaceCapabilitiesKHR,
+    pub(crate) surface_formats: Vec<vk::SurfaceFormatKHR>,
+    pub(crate) present_modes: Vec<vk::PresentModeKHR>,
     // pipelinecacheID,
     // limits,
     // sparse_properties,
@@ -31,7 +32,7 @@ pub struct Gpu {
 
 impl Gpu {
     pub fn new(
-        device: vk::PhysicalDevice,
+        physical_device: vk::PhysicalDevice,
         properties: vk::PhysicalDeviceProperties,
         device_queues: Vec<QueueFamily>,
         available_extensions: Vec<vk::ExtensionProperties>,
@@ -41,7 +42,7 @@ impl Gpu {
         present_modes: Vec<vk::PresentModeKHR>,
     ) -> Self {
         Gpu {
-            device_handle: device,
+            device_handle: physical_device,
             device_name: properties.device_name,
             device_type: properties.device_type,
             queue_families: device_queues,
@@ -213,6 +214,7 @@ impl std::convert::AsRef<Gpu> for Gpu {
 }
 
 #[cfg(test)]
+// This needs to be outside the test module so that other test modules can import it
 pub struct TestGpuBuilder {
         vendor: Option<PciVendor>,
         device_type: Option<vk::PhysicalDeviceType>,
