@@ -6,7 +6,7 @@ use std::ffi::CStr;
 use std::collections::HashMap;
 
 // use super::Gpu;
-use super::{QueueFamily, QueueToCreate, PciVendor, Features, features::Feature};
+use super::{QueueFamily, QueueToCreate, PciVendor, Features, features::Feature, ExtensionManager};
 use super::VulkanDevice;
 use crate::error;
 
@@ -96,6 +96,19 @@ impl<'a> ConfigureDevice<'a> {
         } else {
             Err(error::Error::MissingFeature(requested_feature))
         }
+    }
+
+    fn required_device_extensions<F>(
+        &mut self,
+        select_extensions: F,
+    ) -> Result<&mut Self, error::Error>
+    where
+        F: Fn(&mut ExtensionManager) -> (),
+    {
+        let mut mng = ExtensionManager::new();
+        select_extensions(&mut mng);
+        let extensions_to_load = mng.get_extensions();
+        Ok(self)
     }
 
     // Will see if a feature can be enabled and enable it if it is supported
@@ -196,10 +209,17 @@ impl<'a> ConfigureDevice<'a> {
             let queue = unsafe { device.get_device_queue(family_index as u32, queue_index as u32) };
             queues.push(queue);
         }
-        println!("Returning RenderDevice");
-        // TODO: Currently doesn't include extensions that have been loaded
-        panic!("");
-        // VulkanDevice::new(physical_device, device, )
+        VulkanDevice::new(self.device_handle, 
+            queues, 
+            self.enabled_features, 
+            self.extensions_to_load, 
+            self.surface_capabilities, 
+            self.surface_formats, 
+            self.present_modes, device, 
+            self.vendor_id, 
+            self.device_id, 
+            self.api_version, 
+            self.device_name)
     }
 
     // We prioritize queue families that provide the least functionality when allocating queues
