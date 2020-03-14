@@ -1,4 +1,4 @@
-use crate::renderer::{QueueFamily, Features, Feature, PciVendor};
+use crate::renderer::{QueueFamily, Features, Feature, PciVendor, Extensions};
 use super::Gpu;
 
 use ash::vk;
@@ -93,14 +93,13 @@ impl Gpu {
         false
     }
 
-    pub fn has_extension(&self, extension_name: &CStr) -> bool {
+    pub fn has_extension(&self, extension: &Extensions) -> bool {
         // Convert the ExtensionProperty to a &CStr extension name
         for available_extension in self
             .available_extensions
-            .iter()
-            .map(|ext| unsafe { CStr::from_ptr(ext.extension_name.as_ptr()) })
+            .iter().map(|ext| unsafe { CStr::from_ptr(ext.extension_name.as_ptr()) } )
         {
-            if extension_name == available_extension {
+            if extension.get_name() == available_extension {
                 return true;
             }
         }

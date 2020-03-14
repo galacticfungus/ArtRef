@@ -1,14 +1,13 @@
 use std::ffi::CString;
 
-use crate::renderer::Features;
-use crate::renderer::Gpu;
+use crate::renderer::{Features, Extensions, Gpu};
 
 use ash::vk;
 
 pub enum Error {
     ExtensionNotFound(CString),
     LayerNotFound(CString),
-    ExtensionsNotFound(Vec<CString>),
+    ExtensionsNotFound(Vec<Extensions>),
     NoGraphicsQueue,
     MissingRequiredDeviceExtensions(Vec<(Gpu, Vec<CString>)>),
     MissingFeature(Features),

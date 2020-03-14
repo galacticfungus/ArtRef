@@ -97,7 +97,7 @@ where
                         let mut missing_extensions: Vec<CString> = Vec::new();
                         for extension in requested_extensions.iter() {
                             if device.has_extension(extension) == false {
-                                missing_extensions.push((*extension).to_owned());
+                                missing_extensions.push(extension.get_name().to_owned());
                             }
                         }
                         // devices needs to last as long as self ie the selector
@@ -110,7 +110,6 @@ where
         // Set the new extensions to load - if no devices supporting these extensions were found this point is never reached
         // TODO: Add an extension one at a time
         // TODO: extensions_to_load should be a Hashmap if optional device extensions are to be supported
-        self.extensions(requested_extensions);
         Ok(self)
     }
 

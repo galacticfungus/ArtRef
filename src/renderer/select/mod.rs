@@ -11,7 +11,7 @@ pub use gpu::TestGpuBuilder;
 use core::fmt::Debug;
 use std::ffi::CStr;
 
-use crate::renderer::{PciVendor, QueueFamily, Features,};
+use crate::renderer::{PciVendor, QueueFamily, Features, Extensions};
 use crate::renderer::ExtensionManager;
 use crate::error;
 

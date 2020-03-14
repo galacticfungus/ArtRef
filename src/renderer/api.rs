@@ -14,9 +14,8 @@ use std::ffi::CStr;
 use std::ffi::CString;
 use std::os::raw::{c_char, c_void};
 
-use super::extensions::ExtensionManager;
 use super::layers::LayerManager;
-use super::{DeviceSelector, VulkanDevice, Swapchain, ConfigureSwapchain, Surface, RenderDevice};
+use super::{DeviceSelector, VulkanDevice, Swapchain, ConfigureSwapchain, Surface, RenderDevice, ExtensionManager, Extensions};
 
 use crate::error;
 
@@ -27,7 +26,8 @@ pub struct VulkanConfig {
     application_version: u32,
     application_name: Option<String>,
     engine_name: Option<String>,
-    requested_extensions: HashMap<*const c_char, bool>,
+    requested_extensions: HashMap<Extensions, bool>,
+    available_extensions: Vec<vk::ExtensionProperties>,
     layers_to_load: Vec<*const c_char>,
 }
 
@@ -46,6 +46,10 @@ impl VulkanConfig {
         // Vulkan 1.0
         //     None => {},
         // }
+        let available_extensions = entry
+            .enumerate_instance_extension_properties()
+            .expect("Failed to load list of extensions");
+
         VulkanConfig {
             entry,
             application_name: None,
@@ -54,6 +58,7 @@ impl VulkanConfig {
             application_version: 0,
             api_version: vk_make_version!(1, 0, 0),
             requested_extensions: HashMap::new(),
+            available_extensions,
             layers_to_load: Vec::default(),
         }
     }
@@ -90,49 +95,41 @@ impl VulkanConfig {
     where
         F: Fn(&mut ExtensionManager) -> (),
     {
-        let extensions = self
-            .entry
-            .enumerate_instance_extension_properties()
-            .expect("Failed to load list of extensions");
-        let available_extensions: Vec<[i8; ash::vk::MAX_EXTENSION_NAME_SIZE]> =
-            extensions.into_iter().map(|x| x.extension_name).collect();
-        // let mut available_extensions = Vec::with_capacity(extensions.len());
-
+        
         let mut mng = ExtensionManager::new();
         required_extensions(&mut mng);
         // If any of the extensions couldn't be found return an error
         let requested_extensions = mng.get_extensions();
+        let mut extensions_to_add: HashMap<Extensions, bool> = HashMap::with_capacity(requested_extensions.len());
         for extension in requested_extensions {
-            if self.is_extension_available(extension, available_extensions.as_slice()) {
+            if self.is_extension_available(&extension, self.available_extensions.as_slice()) {
                 // TODO: Ensure these pointers are valid as they should point to static strings inside the ash library
-                self.requested_extensions.insert(extension.as_ptr(), true);
+                extensions_to_add.insert(extension, true);
             } else {
-                self.requested_extensions.insert(extension.as_ptr(), false);
+                extensions_to_add.insert(extension, false);
             }
         }
-        if self.requested_extensions.iter().any(|ext| *ext.1 == false) {
-            let missing_extensions: Vec<CString> = self
+        if extensions_to_add.iter().any(|(_, present)| *present == false) {
+            let missing_extensions: Vec<Extensions> = self
                 .requested_extensions
                 .into_iter()
-                .filter(|ext| ext.1 == false)
-                .map(|ext| unsafe { CStr::from_ptr(ext.0) }.to_owned())
+                .filter(|(_, present)| *present == false)
+                .map(|(ext, _)| ext)
                 .collect();
             return Err(error::Error::ExtensionsNotFound(missing_extensions));
         }
-
-        // self.requested_extensions.extend(extensions_to_add.into_iter().map(|ext| (ext.0.as_ptr(), ext.1)).collect::<HashMap<*const i8, bool>>());
+        
+        self.requested_extensions.extend(extensions_to_add.into_iter());
         Ok(self)
     }
 
     fn is_extension_available(
         &self,
-        extension_name: &'static CStr,
-        available_extensions: &[[i8; 256]],
+        extension: &Extensions,
+        available_extensions: &[ash::vk::ExtensionProperties],
     ) -> bool {
-        for available_extension in available_extensions {
-            // This is safe as long as the CStr has a lifetime longer than the scope its used in
-            let available_extension = unsafe { CStr::from_ptr(available_extension.as_ptr()) };
-            if available_extension == extension_name {
+        for available_extension in available_extensions.iter().map(|ext| unsafe { CStr::from_ptr(ext.extension_name.as_ptr()) } ) {
+            if available_extension == extension.get_name() {
                 return true;
             }
         }
@@ -143,21 +140,15 @@ impl VulkanConfig {
     where
         F: Fn(&mut ExtensionManager) -> (),
     {
-        let extensions = self
-            .entry
-            .enumerate_instance_extension_properties()
-            .expect("Failed to load list of extensions");
-        let available_extensions: Vec<[i8; ash::vk::MAX_EXTENSION_NAME_SIZE]> =
-            extensions.into_iter().map(|x| x.extension_name).collect();
         let mut mng = ExtensionManager::new();
         optional_extensions(&mut mng);
         let requested_extensions = mng.get_extensions();
         for extension in requested_extensions {
-            if self.is_extension_available(extension, available_extensions.as_slice()) {
+            if self.is_extension_available(&extension, self.available_extensions.as_slice()) {
                 // TODO: Ensure these pointers are valid as they should point to static strings inside the ash library
-                self.requested_extensions.insert(extension.as_ptr(), true);
+                self.requested_extensions.insert(extension, true);
             } else {
-                self.requested_extensions.insert(extension.as_ptr(), false);
+                self.requested_extensions.insert(extension, false);
             }
         }
         self
@@ -188,6 +179,7 @@ impl VulkanConfig {
             requested_extensions,
             layers_to_load,
             entry,
+            .. // We no longer have any need of the available extensions
         } = self;
         // Must be NULL or a c string
         let c_app_name = match application_name {
@@ -207,11 +199,11 @@ impl VulkanConfig {
             application_version,
             ..Default::default()
         };
-        // Get the extensions that were found and create a list of CStrings
+        // Convert the Extensions enum to raw pointers to c strings
         let extensions_to_load: Vec<*const c_char> = requested_extensions
             .iter()
-            .filter(|ext| *ext.1 == true)
-            .map(|ext| *ext.0)
+            .filter(|(_, &present)| present == true)
+            .map(|(ext, _)| ext.get_name().as_ptr())
             .collect();
         let create_info = vk::InstanceCreateInfo {
             p_application_info: &app_info,
@@ -314,7 +306,7 @@ mod tests {
         assert_eq!(config.requested_extensions.len(), 2);
         let name_to_test = ash::extensions::khr::Win32Surface::name().as_ptr();
         // Requires a reference to a reference since normally this points to an array of pointers to static &CStr
-        assert_eq!(config.requested_extensions.get(&name_to_test), Some(&true));
+        assert_eq!(config.requested_extensions.get(&crate::renderer::Extensions::Win32Surface), Some(&true));
         // println!("Loaded extensions are {:?}", config.requested_extensions);
     }
 

@@ -1,9 +1,11 @@
 use super::{DeviceSelector, Gpu, DeviceFilter};
 use crate::error;
-use crate::renderer::{QueueFamily, Surface, PciVendor, ConfigureDevice};
+use crate::renderer::{QueueFamily, Surface, PciVendor, ConfigureDevice, Extensions};
 
 use ash::version::InstanceV1_0;
 use ash::vk;
+
+use std::ffi::CStr;
 
 impl<'a> DeviceSelector<'a> {
     fn get_device_queues(instance: &ash::Instance, physical_device: vk::PhysicalDevice, surface: &mut Surface) -> (bool, Vec<QueueFamily>) {
@@ -42,10 +44,9 @@ impl<'a> DeviceSelector<'a> {
         let device_properties =
             unsafe { instance.get_physical_device_properties(physical_device) };
 
-        let device_extensions =
+        let available_extensions =
             unsafe { instance.enumerate_device_extension_properties(physical_device) }
                 .expect("Failed to get device extensions");
-
         let device_features = unsafe { instance.get_physical_device_features(physical_device) };
         
         let (surface_capabilities, surface_formats, present_modes) = Self::get_surface_properties(physical_device, surface)?;
@@ -55,7 +56,7 @@ impl<'a> DeviceSelector<'a> {
             physical_device,
             device_properties,
             device_queues,
-            device_extensions,
+            available_extensions,
             device_features,
             surface_capabilities,
             surface_formats,

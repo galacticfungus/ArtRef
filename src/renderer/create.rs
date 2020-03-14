@@ -6,7 +6,7 @@ use std::ffi::CStr;
 use std::collections::HashMap;
 
 // use super::Gpu;
-use super::{QueueFamily, QueueToCreate, PciVendor, Features, features::Feature, ExtensionManager};
+use super::{QueueFamily, QueueToCreate, PciVendor, Features, features::Feature, ExtensionManager, Extensions};
 use super::VulkanDevice;
 use crate::error;
 
@@ -26,7 +26,7 @@ pub struct ConfigureDevice<'a> {
     device_name: [i8; ash::vk::MAX_PHYSICAL_DEVICE_NAME_SIZE],
     device_type: vk::PhysicalDeviceType,
     available_extensions: Vec<vk::ExtensionProperties>,
-    extensions_to_load: Vec<&'static CStr>,
+    extensions_to_load: Vec<Extensions>,
     device_features: vk::PhysicalDeviceFeatures,
     enabled_features: vk::PhysicalDeviceFeatures,
     surface_capabilities: vk::SurfaceCapabilitiesKHR,
@@ -46,7 +46,7 @@ impl<'a> ConfigureDevice<'a> {
         device_name: [i8; ash::vk::MAX_PHYSICAL_DEVICE_NAME_SIZE],
         device_type: vk::PhysicalDeviceType,
         available_extensions: Vec<vk::ExtensionProperties>,
-        extensions_to_load: Vec<&'static CStr>,
+        extensions_to_load: Vec<Extensions>,
         device_features: vk::PhysicalDeviceFeatures,
         enabled_features: vk::PhysicalDeviceFeatures,
         surface_capabilities: vk::SurfaceCapabilitiesKHR,
@@ -188,7 +188,7 @@ impl<'a> ConfigureDevice<'a> {
         // The queue map lets us map from creation index to queue index
         let device_extensions: Vec<*const std::os::raw::c_char> = self.extensions_to_load
                                 .iter()
-                                .map(|ext| (*ext).as_ptr())
+                                .map(|ext| (*ext).get_name().as_ptr())
                                 .collect();
         let create_info = vk::DeviceCreateInfo {
             enabled_extension_count: device_extensions.len() as u32,
@@ -209,16 +209,19 @@ impl<'a> ConfigureDevice<'a> {
             let queue = unsafe { device.get_device_queue(family_index as u32, queue_index as u32) };
             queues.push(queue);
         }
+        
         VulkanDevice::new(self.device_handle, 
             queues, 
-            self.enabled_features, 
-            self.extensions_to_load, 
-            self.surface_capabilities, 
-            self.surface_formats, 
-            self.present_modes, device, 
-            self.vendor_id, 
-            self.device_id, 
-            self.api_version, 
+            self.enabled_features,
+            self.extensions_to_load.into_iter().map(|ext| (ext, true)).collect::<HashMap<Extensions, bool>>(),
+            self.surface_capabilities,
+            self.surface_formats,
+            self.present_modes,
+            device,
+            self.vendor_id,
+            self.device_id,
+            self.api_version,
+            self.driver_version,
             self.device_name)
     }
 

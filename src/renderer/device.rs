@@ -12,7 +12,7 @@ pub struct VulkanDevice {
     queues: Vec<vk::Queue>,
     device: ash::Device,
     enabled_features: vk::PhysicalDeviceFeatures,
-    extensions_loaded: HashMap<&'static CStr, bool>,
+    extensions_loaded: HashMap<Extensions, bool>,
     surface_capabilities: vk::SurfaceCapabilitiesKHR,
     surface_formats: Vec<vk::SurfaceFormatKHR>,
     present_modes: Vec<vk::PresentModeKHR>,
@@ -27,7 +27,7 @@ impl VulkanDevice {
     pub fn new(physical_device: vk::PhysicalDevice, 
         queues: Vec<vk::Queue>, 
         enabled_features: vk::PhysicalDeviceFeatures, 
-        extensions_loaded: HashMap<&'static CStr, bool>, 
+        extensions_loaded: HashMap<Extensions, bool>,
         surface_capabilities: vk::SurfaceCapabilitiesKHR,
         surface_formats: Vec<vk::SurfaceFormatKHR>,
         present_modes: Vec<vk::PresentModeKHR>,
@@ -35,6 +35,7 @@ impl VulkanDevice {
         vendor_id: PciVendor,
         device_id: u32,
         api_version: u32,
+        driver_version: u32,
         device_name: [c_char; vk::MAX_PHYSICAL_DEVICE_NAME_SIZE]) -> VulkanDevice {
         VulkanDevice {
             queues,
