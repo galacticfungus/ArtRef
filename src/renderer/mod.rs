@@ -53,8 +53,7 @@ mod tests {
             // .optional_extensions(|mng| {
             // })
             .with_layers(|mng| {
-                mng.add_layer(Layers::KhronosValidation)
-                    .expect("Failed to load layer");
+                mng.add_layer(Layers::KhronosValidation);
             })
             .init();
         // TODO: Test something

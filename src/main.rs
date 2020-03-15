@@ -15,7 +15,7 @@ fn main() {
         .engine_name("ArtRef Renderer v0.1")
         .application_name("ArtRef")
         .with_layers(|mng| {
-            mng.add_layer(renderer::Layers::KhronosValidation).expect("Failed to load layer");
+            mng.add_layer(renderer::Layers::KhronosValidation);
         })
         .optional_extensions(|mng| {
             mng.add_extension(renderer::Extensions::DebugUtils);

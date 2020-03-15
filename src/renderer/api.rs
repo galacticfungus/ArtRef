@@ -15,7 +15,7 @@ use std::ffi::CString;
 use std::os::raw::{c_char, c_void};
 
 use super::layers::LayerManager;
-use super::{DeviceSelector, VulkanDevice, Swapchain, ConfigureSwapchain, Surface, RenderDevice, ExtensionManager, Extensions};
+use super::{DeviceSelector, VulkanDevice, Swapchain, ConfigureSwapchain, Surface, RenderDevice, ExtensionManager, Extensions, Layers};
 
 use crate::error;
 
@@ -28,7 +28,8 @@ pub struct VulkanConfig {
     engine_name: Option<String>,
     requested_extensions: HashMap<Extensions, bool>,
     available_extensions: Vec<vk::ExtensionProperties>,
-    layers_to_load: Vec<*const c_char>,
+    layers_to_load: HashMap<Layers, bool>,
+    available_layers: Vec<vk::LayerProperties>,
 }
 
 impl VulkanConfig {
@@ -49,7 +50,8 @@ impl VulkanConfig {
         let available_extensions = entry
             .enumerate_instance_extension_properties()
             .expect("Failed to load list of extensions");
-
+        // TODO: Store available layers here
+        let available_layers = entry.enumerate_instance_layer_properties().expect("Failed to load list of layers");
         VulkanConfig {
             entry,
             application_name: None,
@@ -59,7 +61,8 @@ impl VulkanConfig {
             api_version: vk_make_version!(1, 0, 0),
             requested_extensions: HashMap::new(),
             available_extensions,
-            layers_to_load: Vec::default(),
+            layers_to_load: HashMap::new(),
+            available_layers,
         }
     }
 
@@ -102,7 +105,7 @@ impl VulkanConfig {
         let requested_extensions = mng.get_extensions();
         let mut extensions_to_add: HashMap<Extensions, bool> = HashMap::with_capacity(requested_extensions.len());
         for extension in requested_extensions {
-            if self.is_extension_available(&extension, self.available_extensions.as_slice()) {
+            if self.is_extension_available(&extension) {
                 // TODO: Ensure these pointers are valid as they should point to static strings inside the ash library
                 extensions_to_add.insert(extension, true);
             } else {
@@ -122,13 +125,19 @@ impl VulkanConfig {
         self.requested_extensions.extend(extensions_to_add.into_iter());
         Ok(self)
     }
+    /// Checks if a layer is available to Vulkan
+    fn is_layer_available(&self, layer: &Layers) -> bool {
+        self.available_layers.iter()
+            // This is safe since the pointer is never left dangling and layer_name must be a c string
+            .map(|layer| unsafe { CStr::from_ptr(layer.layer_name.as_ptr()) })
+            .any(|layer_name| layer_name == layer.get_name())
+    }
 
     fn is_extension_available(
         &self,
         extension: &Extensions,
-        available_extensions: &[ash::vk::ExtensionProperties],
     ) -> bool {
-        for available_extension in available_extensions.iter().map(|ext| unsafe { CStr::from_ptr(ext.extension_name.as_ptr()) } ) {
+        for available_extension in self.available_extensions.iter().map(|ext| unsafe { CStr::from_ptr(ext.extension_name.as_ptr()) } ) {
             if available_extension == extension.get_name() {
                 return true;
             }
@@ -144,7 +153,7 @@ impl VulkanConfig {
         optional_extensions(&mut mng);
         let requested_extensions = mng.get_extensions();
         for extension in requested_extensions {
-            if self.is_extension_available(&extension, self.available_extensions.as_slice()) {
+            if self.is_extension_available(&extension) {
                 // TODO: Ensure these pointers are valid as they should point to static strings inside the ash library
                 self.requested_extensions.insert(extension, true);
             } else {
@@ -160,11 +169,15 @@ impl VulkanConfig {
     {
         let mut mng = LayerManager::new(&self.entry);
         layers_to_load(&mut mng);
-        self.layers_to_load = mng
-            .get_layers_to_load()
-            .iter()
-            .map(|ext| ext.as_ptr())
-            .collect();
+        let layers = mng.get_layers_to_load();
+        for layer in layers {
+            if self.is_layer_available(&layer) {
+                // TODO: Ensure these pointers are valid as they should point to static strings inside the ash library
+                self.layers_to_load.insert(layer, true);
+            } else {
+                self.layers_to_load.insert(layer, false);
+            }
+        }
         self
     }
 
@@ -205,12 +218,16 @@ impl VulkanConfig {
             .filter(|(_, &present)| present == true)
             .map(|(ext, _)| ext.get_name().as_ptr())
             .collect();
+        let available_layers_to_load: Vec<*const c_char> = layers_to_load.iter()
+            .filter(|(_, &present)| present == true)
+            .map(|(layer, _)| layer.get_name().as_ptr())
+            .collect();
         let create_info = vk::InstanceCreateInfo {
             p_application_info: &app_info,
             pp_enabled_extension_names: extensions_to_load.as_ptr(),
             enabled_extension_count: extensions_to_load.len() as u32,
-            pp_enabled_layer_names: layers_to_load.as_ptr(),
-            enabled_layer_count: layers_to_load.len() as u32,
+            pp_enabled_layer_names: available_layers_to_load.as_ptr(),
+            enabled_layer_count: available_layers_to_load.len() as u32,
             ..Default::default()
         };
         let instance = unsafe {
@@ -279,14 +296,11 @@ mod tests {
             .application_version(1, 0, 0)
             .engine_version(1, 0, 0)
             .with_layers(|mng| {
-                mng.add_layer(crate::renderer::Layers::KhronosValidation)
-                    .expect("Failed to add validation layer");
+                mng.add_layer(crate::renderer::Layers::KhronosValidation);
             });
         assert_eq!(config.layers_to_load.len(), 1);
-        assert_eq!(
-            config.layers_to_load[0],
-            super::super::layers::KhronosValidation::name().as_ptr()
-        );
+        let result = config.layers_to_load[&super::super::layers::Layers::KhronosValidation];
+        assert!(result);
     }
 
     #[test]

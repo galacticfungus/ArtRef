@@ -32,8 +32,7 @@ pub trait SupportDeviceFiltering {
 }
 
 /// This trait is implemented for free when SupportDeviceFiltering is implemented
-/// Note that these filters often work in reverse meaning that the indexes of elements that
-/// are to be removed are collected
+/// Note that these filters work by collecting the index of items to be removed
 pub trait FiltersDevices<'a> {
     // TODO: explicitly prefer a physical device that supports drawing and presentation in the same queue 
     fn has_queue(&'a mut self, operations_supported: vk::QueueFlags, must_present: bool) -> &'a mut Self;
