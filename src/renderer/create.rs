@@ -26,7 +26,7 @@ pub struct ConfigureDevice<'a> {
     device_name: [i8; ash::vk::MAX_PHYSICAL_DEVICE_NAME_SIZE],
     device_type: vk::PhysicalDeviceType,
     available_extensions: Vec<vk::ExtensionProperties>,
-    extensions_to_load: Vec<Extensions>,
+    extensions_to_load: HashMap<Extensions, bool>,
     device_features: vk::PhysicalDeviceFeatures,
     enabled_features: vk::PhysicalDeviceFeatures,
     surface_capabilities: vk::SurfaceCapabilitiesKHR,
@@ -46,9 +46,7 @@ impl<'a> ConfigureDevice<'a> {
         device_name: [i8; ash::vk::MAX_PHYSICAL_DEVICE_NAME_SIZE],
         device_type: vk::PhysicalDeviceType,
         available_extensions: Vec<vk::ExtensionProperties>,
-        extensions_to_load: Vec<Extensions>,
         device_features: vk::PhysicalDeviceFeatures,
-        enabled_features: vk::PhysicalDeviceFeatures,
         surface_capabilities: vk::SurfaceCapabilitiesKHR,
         surface_formats: Vec<vk::SurfaceFormatKHR>,
         present_modes: Vec<vk::PresentModeKHR>) -> ConfigureDevice<'a> {
@@ -63,9 +61,9 @@ impl<'a> ConfigureDevice<'a> {
             device_name,
             device_type,
             available_extensions,
-            extensions_to_load,
+            extensions_to_load: HashMap::new(),
             device_features,
-            enabled_features,
+            enabled_features: vk::PhysicalDeviceFeatures::default(),
             surface_capabilities,
             surface_formats,
             present_modes,
@@ -98,7 +96,14 @@ impl<'a> ConfigureDevice<'a> {
         }
     }
 
-    fn required_device_extensions<F>(
+    // Will see if a feature can be enabled and enable it if it is supported
+    pub fn try_enable_feature(&mut self, feature: Features) -> &mut Self {
+        let feature = self.feature(&feature);
+        feature.enable_if_able();
+        self
+    }
+
+    pub fn extensions_to_load<F>(
         &mut self,
         select_extensions: F,
     ) -> Result<&mut Self, error::Error>
@@ -108,14 +113,19 @@ impl<'a> ConfigureDevice<'a> {
         let mut mng = ExtensionManager::new();
         select_extensions(&mut mng);
         let extensions_to_load = mng.get_extensions();
+        // TODO: Add the extensions to the list of extensions to load checking that each is available
+        for extension in extensions_to_load {
+            if self.is_extension_available(&extension) {
+                self.extensions_to_load.insert(extension, true);
+            } else {
+                self.extensions_to_load.insert(extension, false);
+            }
+        }
         Ok(self)
     }
 
-    // Will see if a feature can be enabled and enable it if it is supported
-    pub fn try_enable_feature(&mut self, feature: Features) -> &mut Self {
-        let feature = self.feature(&feature);
-        feature.enable_if_able();
-        self
+    fn is_extension_available(&self, extension: &Extensions) -> bool {
+        self.available_extensions.iter().map(|ext| unsafe { CStr::from_ptr(ext.extension_name.as_ptr()) } ).any(|ext_name| ext_name == extension.get_name())
     }
 
     // This function will return an error when a queue is requested that is not available
@@ -188,7 +198,8 @@ impl<'a> ConfigureDevice<'a> {
         // The queue map lets us map from creation index to queue index
         let device_extensions: Vec<*const std::os::raw::c_char> = self.extensions_to_load
                                 .iter()
-                                .map(|ext| (*ext).get_name().as_ptr())
+                                .filter(|(_, &present)| present == true)
+                                .map(|(ext, _)| ext.get_name().as_ptr())
                                 .collect();
         let create_info = vk::DeviceCreateInfo {
             enabled_extension_count: device_extensions.len() as u32,
@@ -213,7 +224,7 @@ impl<'a> ConfigureDevice<'a> {
         VulkanDevice::new(self.device_handle, 
             queues, 
             self.enabled_features,
-            self.extensions_to_load.into_iter().map(|ext| (ext, true)).collect::<HashMap<Extensions, bool>>(),
+            self.extensions_to_load,
             self.surface_capabilities,
             self.surface_formats,
             self.present_modes,
@@ -437,7 +448,7 @@ mod tests {
                 queue_families: self.queue_families,
                 device_handle: vk::PhysicalDevice::default(),
                 available_extensions: Vec::default(),
-                extensions_to_load: Vec::default(),
+                extensions_to_load: HashMap::new(),
                 device_features: vk::PhysicalDeviceFeatures::default(),
                 enabled_features: Default::default(),
                 surface_formats: Default::default(),
@@ -477,7 +488,7 @@ mod tests {
             .add_queue(vk::QueueFlags::GRAPHICS | vk::QueueFlags::COMPUTE, 6, false)
             .add_queue(vk::QueueFlags::TRANSFER | vk::QueueFlags::SPARSE_BINDING, 4, false)
             .build();
-        // Since the "best" queue doesn't support 
+        // Since the "best" queue doesn't support presentation we fallback to the best queue that does
         let res = config.find_best_family(vk::QueueFlags::GRAPHICS, true);
         assert_eq!(res.unwrap(), 0);
     }
@@ -501,7 +512,7 @@ mod tests {
         // TODO: Test something
         let queue_families = config.queue_families;
         println!("{:?}", queue_families);
-        assert_eq!(queue_families[0].queues_to_create().len(), 3);
+        assert_eq!(queue_families[0].queues_to_create().len(), 4);
         assert_eq!(queue_families[1].queues_to_create().len(), 1);
     }
 

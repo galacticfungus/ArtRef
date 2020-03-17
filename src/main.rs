@@ -46,7 +46,10 @@ fn main() {
                  .enable_feature(Features::TesselationShader).expect("Failed to enable tesselation")
                  .define_queues(|mng| {
                      mng.create_graphics_queue(1.0, true);
-                 }).expect("Failed to create queues");
+                 }).expect("Failed to create queues")
+                 .extensions_to_load(|mng| {
+                     
+                 });
     let device = device_config.create_device();
     
 

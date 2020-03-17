@@ -140,9 +140,7 @@ impl<'a> DeviceSelector<'a> {
             device_picked.device_name,
             device_picked.device_type,
             device_picked.available_extensions,
-            Vec::default(),
             device_picked.device_features,
-            vk::PhysicalDeviceFeatures::default(),
             device_picked.surface_capabilities,
             device_picked.surface_formats,
             device_picked.present_modes)

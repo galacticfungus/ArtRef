@@ -1,10 +1,12 @@
 use std::ffi::CStr;
+use ash::vk;
 
 pub struct ExtensionManager {
-    // available_extensions: Vec<[i8; ash::vk::MAX_EXTENSION_NAME_SIZE]>,
-    // extensions_status: HashMap<&'static CStr, bool>,
     extensions_to_load: Vec<Extensions>,
 }
+
+// TODO: Extension Manager needs to be able to support checking if an extension is available
+// TODO: Both an interface trait as well as a generic trait
 
 impl ExtensionManager {
     pub fn new() -> ExtensionManager {
