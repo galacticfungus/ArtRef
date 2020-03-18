@@ -1,5 +1,5 @@
 use super::{DeviceFilter, SupportDeviceFiltering, Gpu, DeviceSelector, FiltersDevices};
-use crate::renderer::{ExtensionManager, Features};
+use crate::{ExtensionManager, Features};
 use crate::error;
 
 use std::ffi::CStr;

@@ -1,6 +1,6 @@
 use super::{DeviceSelector, Gpu, DeviceFilter};
 use crate::error;
-use crate::renderer::{QueueFamily, Surface, PciVendor, ConfigureDevice, Extensions};
+use crate::{QueueFamily, Surface, PciVendor, ConfigureDevice, Extensions};
 
 use ash::version::InstanceV1_0;
 use ash::vk;

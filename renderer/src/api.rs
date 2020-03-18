@@ -17,7 +17,7 @@ use std::os::raw::{c_char, c_void};
 use super::layers::LayerManager;
 use super::{DeviceSelector, VulkanDevice, Swapchain, ConfigureSwapchain, Surface, RenderDevice, ExtensionManager, Extensions, Layers};
 
-use crate::error;
+use super::error;
 
 pub struct VulkanConfig {
     entry: ash::Entry,
@@ -286,7 +286,6 @@ impl VulkanApi {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::renderer::Extensions;
 
     #[test]
     fn test_layers() {
@@ -296,7 +295,7 @@ mod tests {
             .application_version(1, 0, 0)
             .engine_version(1, 0, 0)
             .with_layers(|mng| {
-                mng.add_layer(crate::renderer::Layers::KhronosValidation);
+                mng.add_layer(crate::Layers::KhronosValidation);
             });
         assert_eq!(config.layers_to_load.len(), 1);
         let result = config.layers_to_load[&super::super::layers::Layers::KhronosValidation];
@@ -311,8 +310,8 @@ mod tests {
             .application_version(1, 0, 0)
             .engine_version(1, 0, 0)
             .required_extensions(|mng| {
-                mng.add_extension(crate::renderer::Extensions::Win32Surface);
-                mng.add_extension(crate::renderer::Extensions::Surface);
+                mng.add_extension(crate::Extensions::Win32Surface);
+                mng.add_extension(crate::Extensions::Surface);
             })
             .expect("Failed to load extensions");
 
@@ -320,7 +319,7 @@ mod tests {
         assert_eq!(config.requested_extensions.len(), 2);
         let name_to_test = ash::extensions::khr::Win32Surface::name().as_ptr();
         // Requires a reference to a reference since normally this points to an array of pointers to static &CStr
-        assert_eq!(config.requested_extensions.get(&crate::renderer::Extensions::Win32Surface), Some(&true));
+        assert_eq!(config.requested_extensions.get(&crate::Extensions::Win32Surface), Some(&true));
         // println!("Loaded extensions are {:?}", config.requested_extensions);
     }
 
@@ -332,7 +331,7 @@ mod tests {
             .application_version(1, 0, 0)
             .engine_version(1, 0, 0)
             .optional_extensions(|mng| {
-                mng.add_extension(crate::renderer::Extensions::Win32Surface);
+                mng.add_extension(crate::Extensions::Win32Surface);
             });
         assert_eq!(config.requested_extensions.len(), 1);
         let vulkan = config.init();

@@ -8,11 +8,10 @@ use ash::vk;
 #[cfg(test)]
 pub use gpu::TestGpuBuilder;
 
-use core::fmt::Debug;
 use std::ffi::CStr;
 
-use crate::renderer::{PciVendor, QueueFamily, Features, Extensions};
-use crate::renderer::ExtensionManager;
+use crate::{PciVendor, QueueFamily, Features};
+use crate::ExtensionManager;
 use crate::error;
 
 
@@ -107,7 +106,7 @@ mod tests {
 
     #[test]
     fn test_gpu_feature_api() {
-        use crate::renderer::features::Features;
+        use crate::features::Features;
         let mut gpu = TestGpuBuilder::new()
                             .create_device();
         // TODO: Finish test

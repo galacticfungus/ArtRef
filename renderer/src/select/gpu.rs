@@ -1,4 +1,4 @@
-use crate::renderer::{QueueFamily, Features, Feature, PciVendor, Extensions};
+use crate::{QueueFamily, Features, Feature, PciVendor, Extensions};
 use super::Gpu;
 
 use ash::vk;

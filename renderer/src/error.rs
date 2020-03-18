@@ -1,6 +1,6 @@
 use std::ffi::CString;
 
-use crate::renderer::{Features, Extensions, Gpu};
+use crate::{Features, Extensions, Gpu};
 
 use ash::vk;
 

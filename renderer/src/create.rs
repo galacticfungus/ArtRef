@@ -32,6 +32,7 @@ pub struct ConfigureDevice<'a> {
     surface_capabilities: vk::SurfaceCapabilitiesKHR,
     surface_formats: Vec<vk::SurfaceFormatKHR>,
     present_modes: Vec<vk::PresentModeKHR>,
+    present_mode: vk::PresentModeKHR,
     // queue_data: Vec<QueueFamilyData>,
 }
 
@@ -67,6 +68,8 @@ impl<'a> ConfigureDevice<'a> {
             surface_capabilities,
             surface_formats,
             present_modes,
+            // This mode is guarenteed to be available
+            present_mode: vk::PresentModeKHR::FIFO,
         }
     }
 
@@ -103,6 +106,26 @@ impl<'a> ConfigureDevice<'a> {
         self
     }
 
+    /// The mode picked is the first one available that is added to the list, The default mode is Fifo as that mode is guarenteed to be available
+    pub fn select_present_mode<F>(&mut self, select_mode :F) -> Result<&mut Self, error::Error> 
+    where F: Fn(&mut PresentModeManager) -> (),
+    {
+        let mut modes_picked = Vec::new();
+        let mut picker = PresentModeManager::new(&mut modes_picked);
+        select_mode(&mut picker);
+        // The picker must return a valid option
+        // iterate over the choices selecting the first one that is available
+        for mode in modes_picked {
+            let actual_mode: vk::PresentModeKHR = mode.into();
+            if self.present_modes.contains(&actual_mode) {
+                self.present_mode = actual_mode;
+                break;
+            }
+        }
+        // The default mode is Fifo so no need to reset it
+        Ok(self)
+    }
+
     pub fn extensions_to_load<F>(
         &mut self,
         select_extensions: F,
@@ -113,7 +136,7 @@ impl<'a> ConfigureDevice<'a> {
         let mut mng = ExtensionManager::new();
         select_extensions(&mut mng);
         let extensions_to_load = mng.get_extensions();
-        // TODO: Add the extensions to the list of extensions to load checking that each is available
+        // Add the extensions selected to the list of extensions to load marking whether that extension is available
         for extension in extensions_to_load {
             if self.is_extension_available(&extension) {
                 self.extensions_to_load.insert(extension, true);
@@ -283,6 +306,25 @@ impl<'a> ConfigureDevice<'a> {
 //     }
 // }
 
+// TODO: This can be generalized to be a pick in order
+
+pub struct PresentModeManager<'a> {
+    modes_picked: &'a mut Vec<PresentMode>,
+}
+
+impl<'a> PresentModeManager<'a> {
+    pub fn new(modes_picked: &'a mut Vec<PresentMode>) -> PresentModeManager {
+        PresentModeManager {
+            modes_picked,
+        }
+    }
+
+    pub fn pick_mode(&mut self, mode: PresentMode) -> &mut Self {
+        self.modes_picked.push(mode);
+        self
+    }
+}
+
 #[derive(Debug)]
 // This class does not create any actual queues it merely gathers all the queues that the user wants to
 // create in order to hopefully optimize queue creation, in addition it performs no validation of the results
@@ -362,6 +404,70 @@ impl<'a> QueueManager<'a> {
         self.create_queue_that_supports(vk::QueueFlags::SPARSE_BINDING, priority, false);
     }
 }
+
+pub enum PresentMode {
+    /// Specifies that the presentation engine does not wait for a vertical blanking period to update the current image, meaning 
+    /// this mode may result in visible tearing. No internal queuing of presentation requests is needed, as the requests are applied immediately.
+    Immediate,
+    /// Mailbox specifies that the presentation engine waits for the next vertical blanking period to update the current image.
+    /// Tearing cannot be observed. An internal single-entry queue is used to hold pending presentation requests. If the queue is full when a 
+    /// new presentation request is received, the new request replaces the existing entry, and any images associated with the prior entry become 
+    /// available for re-use by the application. One request is removed from the queue and processed during each vertical blanking period in which 
+    /// the queue is non-empty.
+    Mailbox,
+    /// VK_PRESENT_MODE_FIFO_KHR specifies that the presentation engine waits for the next vertical blanking period to update the current image.
+    /// Tearing cannot be observed. An internal queue is used to hold pending presentation requests. New requests are appended to the end of the queue,
+    /// and one request is removed from the beginning of the queue and processed during each vertical blanking period in which the queue is non-empty.
+    /// This is the only value of presentMode that is required to be supported.
+    Fifo,
+    /// VK_PRESENT_MODE_FIFO_RELAXED_KHR specifies that the presentation engine generally waits for the next vertical blanking period to update the
+    /// current image. If a vertical blanking period has already passed since the last update of the current image then the presentation engine does
+    /// not wait for another vertical blanking period for the update, meaning this mode may result in visible tearing in this case. This mode is useful
+    /// for reducing visual stutter with an application that will mostly present a new image before the next vertical blanking period, but may occasionally
+    /// be late, and present a new image just after the next vertical blanking period. An internal queue is used to hold pending presentation requests.
+    /// New requests are appended to the end of the queue, and one request is removed from the beginning of the queue and processed during or after each
+    /// vertical blanking period in which the queue is non-empty.
+    FifoRelaxed,
+    /// SharedDemandRefresh specifies that the presentation engine and application have concurrent access to a single image, which is
+    /// referred to as a shared presentable image. The presentation engine is only required to update the current image after a new presentation request is
+    /// received. Therefore the application must make a presentation request whenever an update is required. However, the presentation engine may update the
+    /// current image at any point, meaning this mode may result in visible tearing.
+    SharedDemandRefresh,
+    /// SharedContinuousRefresh specifies that the presentation engine and application have concurrent access to a single image, which is referred to as a
+    /// shared presentable image. The presentation engine periodically updates the current image on its regular refresh cycle. The application is only required
+    /// to make one initial presentation request, after which the presentation engine must update the current image without any need for further presentation
+    /// requests. The application can indicate the image contents have been updated by making a presentation request, but this does not guarantee the timing of
+    /// when it will be updated. This mode may result in visible tearing if rendering to the image is not timed correctly.
+    SharedContinuousRefresh,
+}
+
+impl std::convert::From<ash::vk::PresentModeKHR> for PresentMode {
+    fn from(present_mode: vk::PresentModeKHR) -> Self {
+        match present_mode {
+            vk::PresentModeKHR::IMMEDIATE => PresentMode::Immediate,
+            vk::PresentModeKHR::MAILBOX => PresentMode::Mailbox,
+            vk::PresentModeKHR::FIFO => PresentMode::Fifo,
+            vk::PresentModeKHR::FIFO_RELAXED => PresentMode::FifoRelaxed,
+            vk::PresentModeKHR::SHARED_DEMAND_REFRESH => PresentMode::SharedDemandRefresh,
+            vk::PresentModeKHR::SHARED_CONTINUOUS_REFRESH => PresentMode::SharedContinuousRefresh,
+            _ => unreachable!("Unknown present mode found when converting a PresentModeKHR"),
+        }
+    }
+}
+
+impl std::convert::From<PresentMode> for ash::vk::PresentModeKHR {
+    fn from(present_mode: PresentMode) -> Self {
+        match present_mode {
+            PresentMode::Immediate => vk::PresentModeKHR::IMMEDIATE,
+            PresentMode::Mailbox => vk::PresentModeKHR::MAILBOX,
+            PresentMode::Fifo => vk::PresentModeKHR::FIFO,
+            PresentMode::FifoRelaxed => vk::PresentModeKHR::FIFO_RELAXED,
+            PresentMode::SharedDemandRefresh => vk::PresentModeKHR::SHARED_DEMAND_REFRESH,
+            PresentMode::SharedContinuousRefresh => vk::PresentModeKHR::SHARED_CONTINUOUS_REFRESH,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -454,6 +560,7 @@ mod tests {
                 surface_formats: Default::default(),
                 surface_capabilities: vk::SurfaceCapabilitiesKHR::default(),
                 present_modes: Vec::default(),
+                present_mode: vk::PresentModeKHR::default(),
             }
         }
     }

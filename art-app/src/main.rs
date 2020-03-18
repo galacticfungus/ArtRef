@@ -1,12 +1,11 @@
-mod error;
-mod renderer;
-mod window;
-use renderer::{ VulkanConfig, PciVendor};
+
+use renderer::{ VulkanConfig, PciVendor, PresentMode};
 use renderer::Features;
+use ui::Window;
 fn main() {
     // Need to clean up stuff, for instance DestroyInstance
     use renderer::FiltersDevices;
-    let window = window::Window::new();
+    let window = Window::new();
     let (hwnd, hinstance) = window.get_win32_handles();
     let vulkan_api = VulkanConfig::new()
         .api_version(1, 0, 0)
@@ -47,9 +46,12 @@ fn main() {
                  .define_queues(|mng| {
                      mng.create_graphics_queue(1.0, true);
                  }).expect("Failed to create queues")
+                 .select_present_mode(|mng|{
+                    mng.pick_mode(PresentMode::Mailbox);
+                 }).expect("Failed to select mode")
                  .extensions_to_load(|mng| {
-                     
-                 });
+
+                 }).expect("Failed to load extensions");
     let device = device_config.create_device();
     
 

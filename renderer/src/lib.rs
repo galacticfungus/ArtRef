@@ -1,4 +1,5 @@
 mod api;
+mod error;
 mod create;
 mod extensions;
 mod features;
@@ -25,7 +26,7 @@ pub use surface::Surface;
 pub use vendor::PciVendor;
 pub use render::RenderDevice;
 pub use device::VulkanDevice;
-pub use create::ConfigureDevice;
+pub use create::{ConfigureDevice, PresentMode};
 pub use swapchain::{Swapchain, ConfigureSwapchain};
 
 #[cfg(test)]
