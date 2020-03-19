@@ -51,7 +51,7 @@ fn main() {
                  }).expect("Failed to select mode")
                  .extensions_to_load(|mng| {
 
-                 }).expect("Failed to load extensions");
+                 });
     let device = device_config.create_device();
     
 

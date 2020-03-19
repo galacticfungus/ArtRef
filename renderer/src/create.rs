@@ -129,7 +129,7 @@ impl<'a> ConfigureDevice<'a> {
     pub fn extensions_to_load<F>(
         &mut self,
         select_extensions: F,
-    ) -> Result<&mut Self, error::Error>
+    ) -> &mut Self
     where
         F: Fn(&mut ExtensionManager) -> (),
     {
@@ -144,11 +144,22 @@ impl<'a> ConfigureDevice<'a> {
                 self.extensions_to_load.insert(extension, false);
             }
         }
-        Ok(self)
+        self
     }
 
     fn is_extension_available(&self, extension: &Extensions) -> bool {
-        self.available_extensions.iter().map(|ext| unsafe { CStr::from_ptr(ext.extension_name.as_ptr()) } ).any(|ext_name| ext_name == extension.get_name())
+        // self.available_extensions.iter().map(|ext| unsafe { CStr::from_ptr(ext.extension_name.as_ptr()) } ).any(|ext_name| ext_name == extension.get_name())
+        for available_extension in self.available_extensions.iter() {
+            let available_name = unsafe { CStr::from_ptr(available_extension.extension_name.as_ptr()) };
+            println!("Comparing names");
+            if available_name == extension.get_name() {
+                println!("Comparision valid");
+                return true;
+            } else {
+                println!("Comparision worked but failed");
+            }
+        }
+        false
     }
 
     // This function will return an error when a queue is requested that is not available
@@ -286,27 +297,11 @@ impl<'a> ConfigureDevice<'a> {
     }
 }
 
-// TODO: Need to destructure the GPU when it arrives in Configure Device
-// impl Into<VulkanDevice> for ConfigureDevice {
-//     fn into(self) -> VulkanDevice {
-//         VulkanDevice {
-//             api_version: self.api_version,
-//             driver_version: self.driver_version,
-//             vendor_id: self.vendor_id,
-//             device_id: self.device_id,
-//             device_name: self.device_name,
-//             physical_device: self.device_handle,
-//             queues: self.queue_families,
-//             device: self.,
-//             enabled_features: self.enabled_features,
-//             surface_capabilities: self.surface_capabilities,
-//             surface_formats: self.surface_formats,
-//             present_modes: self.present_modes,
-//         }
-//     }
-// }
-
-// TODO: This can be generalized to be a pick in order
+impl<'a> std::fmt::Debug for ConfigureDevice<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("Available Extensions: {:?}", self.available_extensions))
+    }
+}
 
 pub struct PresentModeManager<'a> {
     modes_picked: &'a mut Vec<PresentMode>,
@@ -480,7 +475,7 @@ mod tests {
         instance: &'a ash::Instance,
         device_name: Option<[i8; ash::vk::MAX_PHYSICAL_DEVICE_NAME_SIZE]>,
         device_type: Option<vk::PhysicalDeviceType>,
-        // available_extensions: Option<Vec<vk::ExtensionProperties>>,
+        available_extensions: Option<Vec<vk::ExtensionProperties>>,
         // extensions_to_load: Option<Vec<&'static CStr>>,
         // device_features: Option<vk::PhysicalDeviceFeatures>,
         // enabled_features: Option<vk::PhysicalDeviceFeatures>,
@@ -499,6 +494,7 @@ mod tests {
                 device_name: None,
                 device_type: None,
                 queue_families: Vec::default(),
+                available_extensions: None,
             }
         }
 
@@ -536,6 +532,32 @@ mod tests {
             self
         }
 
+        pub fn add_supported_extension(mut self, extension_to_support: Extensions) -> Self {
+            let mut extension_name: [std::os::raw::c_char; vk::MAX_EXTENSION_NAME_SIZE] = [0; vk::MAX_EXTENSION_NAME_SIZE];
+                
+            // No need to include NUL byte since extension name is initilized with NUL bytes
+            let source_bytes = extension_to_support.get_name().to_bytes();
+            // This ensures that our destination array slice has the same length as the source
+            // Since they have the same max length this is safe
+            let mutable_slice_of_array = &mut extension_name.as_mut()[..source_bytes.len()];
+            // This is done to ensure that the byte sign is the same regardless of platform
+            let character_byte_slice = unsafe{ std::slice::from_raw_parts(source_bytes.as_ptr() as *const std::os::raw::c_char, source_bytes.len()) };
+            // unsafe { std::ptr::copy_nonoverlapping(b, extension_name.as_mut(), b.len()) };
+            mutable_slice_of_array.copy_from_slice(character_byte_slice);
+            let raw_extension = vk::ExtensionProperties {
+                extension_name,
+                spec_version: 1,
+            };
+            // Add the newly crafted extension to the list of available extensions
+            if let Some(available_extensions) = self.available_extensions.as_mut() {
+                available_extensions.push(raw_extension);
+            } else {
+                let extensions = vec![raw_extension];
+                self.available_extensions = Some(extensions);
+            }
+            self
+        }
+
         pub fn build(self) -> ConfigureDevice<'a> {
             ConfigureDevice {
                 instance: self.instance,
@@ -545,15 +567,15 @@ mod tests {
                 device_type: self.device_type.unwrap_or(Default::default()),
                 driver_version: self.driver_version.unwrap_or(Default::default()),
                 device_name: self.device_name.unwrap_or_else(|| {
-                    let mut default_device_name: [i8; vk::MAX_PHYSICAL_DEVICE_NAME_SIZE] = [0; vk::MAX_PHYSICAL_DEVICE_NAME_SIZE];
+                    let mut default_device_name: [std::os::raw::c_char; vk::MAX_PHYSICAL_DEVICE_NAME_SIZE] = [0; vk::MAX_PHYSICAL_DEVICE_NAME_SIZE];
                     for (i, letter) in b"Default Test Device\0".into_iter().enumerate() {
-                        default_device_name[i] = *letter as i8;
+                        default_device_name[i] = *letter as std::os::raw::c_char;
                     }
                     default_device_name
                 }),
                 queue_families: self.queue_families,
                 device_handle: vk::PhysicalDevice::default(),
-                available_extensions: Vec::default(),
+                available_extensions: self.available_extensions.unwrap_or(Default::default()),
                 extensions_to_load: HashMap::new(),
                 device_features: vk::PhysicalDeviceFeatures::default(),
                 enabled_features: Default::default(),
@@ -655,28 +677,32 @@ mod tests {
     }
 
     #[test]
-    fn test_features() {
-        // VulkanConfig::new()
-        //     .api_version(1, 0, 0)
-        //     .application_name("Bob")
-        // .start_device_selection()
-        // .is_discrete()
-        // .supports_tesselation_shader()
-        // .select_device()
-        // .enable_feature(Features::TesselationShader).expect("No Tesselation Support")
-        // .define_queues(|qm| {
-        //     // When we create a queue we favour a family with that specific queue type
-        //     // First we collect a list of Queues to create then we create the queues given the available queue families
-        //     // transfer
-        //     // graphics
-        //     // compute
-        //     // weird one - sparse
-        //     qm.create_graphics_queue(1.0);
-        //     qm.create_transfer_queue(1.0);
-        //     qm.create_compute_queue(1.0);
-        //     // So this code will take the request and attempt to create a queue in specialised families
-        // }).expect("Failed to create the queues")
-        // .create_device();
+    fn test_is_extension_available() {
+        let instance = ConfigureDevice::create_test_instance();
+        let configure = TestConfigureDeviceBuilder::new(&instance)
+            .add_supported_extension(Extensions::Surface)
+            .add_supported_extension(Extensions::Win32Surface)
+            .build();
         // TODO: Fix test
+        println!("{:?}", configure);
+        assert!(configure.is_extension_available(&Extensions::Swapchain) == false);
+        assert!(configure.is_extension_available(&Extensions::Surface));
+    }
+
+    #[test]
+    fn test_define_extension_available() {
+        let instance = ConfigureDevice::create_test_instance();
+        let mut configure = TestConfigureDeviceBuilder::new(&instance)
+            .add_supported_extension(Extensions::Surface)
+            .add_supported_extension(Extensions::Win32Surface)
+            .build();
+        // TODO: Some of these extensions are not device extensions but instance extensions
+        println!("{:?}", configure);
+        configure.extensions_to_load(|mng| {
+            mng.add_extension(Extensions::Surface);
+            mng.add_extension(Extensions::Swapchain);
+        });
+        assert!(configure.extensions_to_load[&Extensions::Surface]);
+        assert!(configure.extensions_to_load[&Extensions::Swapchain] == false);
     }
 }
