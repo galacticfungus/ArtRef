@@ -1,11 +1,9 @@
 use super::{DeviceSelector, Gpu, DeviceFilter};
 use crate::error;
-use crate::{QueueFamily, Surface, PciVendor, ConfigureDevice, Extensions};
+use crate::{QueueFamily, Surface, PciVendor, ConfigureDevice};
 
 use ash::version::InstanceV1_0;
 use ash::vk;
-
-use std::ffi::CStr;
 
 impl<'a> DeviceSelector<'a> {
     fn get_device_queues(instance: &ash::Instance, physical_device: vk::PhysicalDevice, surface: &mut Surface) -> (bool, Vec<QueueFamily>) {

@@ -6,7 +6,7 @@ use std::ffi::CStr;
 use std::collections::HashMap;
 
 // use super::Gpu;
-use super::{QueueFamily, QueueToCreate, PciVendor, Features, features::Feature, ExtensionManager, Extensions};
+use super::{QueueFamily, QueueToCreate, PciVendor, Features, Feature, ExtensionManager, DeviceExtensions};
 use super::VulkanDevice;
 use crate::error;
 
@@ -26,7 +26,7 @@ pub struct ConfigureDevice<'a> {
     device_name: [i8; ash::vk::MAX_PHYSICAL_DEVICE_NAME_SIZE],
     device_type: vk::PhysicalDeviceType,
     available_extensions: Vec<vk::ExtensionProperties>,
-    extensions_to_load: HashMap<Extensions, bool>,
+    extensions_to_load: HashMap<DeviceExtensions, bool>,
     device_features: vk::PhysicalDeviceFeatures,
     enabled_features: vk::PhysicalDeviceFeatures,
     surface_capabilities: vk::SurfaceCapabilitiesKHR,
@@ -131,7 +131,7 @@ impl<'a> ConfigureDevice<'a> {
         select_extensions: F,
     ) -> &mut Self
     where
-        F: Fn(&mut ExtensionManager) -> (),
+        F: Fn(&mut ExtensionManager<DeviceExtensions>) -> (),
     {
         let mut mng = ExtensionManager::new();
         select_extensions(&mut mng);
@@ -147,7 +147,7 @@ impl<'a> ConfigureDevice<'a> {
         self
     }
 
-    fn is_extension_available(&self, extension: &Extensions) -> bool {
+    fn is_extension_available(&self, extension: &DeviceExtensions) -> bool {
         // self.available_extensions.iter().map(|ext| unsafe { CStr::from_ptr(ext.extension_name.as_ptr()) } ).any(|ext_name| ext_name == extension.get_name())
         for available_extension in self.available_extensions.iter() {
             let available_name = unsafe { CStr::from_ptr(available_extension.extension_name.as_ptr()) };
@@ -298,8 +298,27 @@ impl<'a> ConfigureDevice<'a> {
 }
 
 impl<'a> std::fmt::Debug for ConfigureDevice<'a> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("Available Extensions: {:?}", self.available_extensions))
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        pub struct VkVersion {
+            version: u32,
+        }
+
+        impl std::fmt::Debug for VkVersion {
+            fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                fmt.write_fmt(format_args!("{}.{}.0", self.version >> 22, (self.version >> 12) & 0x3ff))
+            }
+        }
+        // TODO: Create a VulkanVersion struct
+        fmt.debug_struct("DeviceConfigure")
+            .field("available_extensions", &self.available_extensions)
+            .field("api_version", &VkVersion { version: self.api_version })
+            .field("device_name", unsafe { &CStr::from_ptr(self.device_name.as_ptr()) } )
+            .field("device_features", &self.device_features)
+            .field("device_type", &self.device_type)
+            .field("driver_version", &self.driver_version)
+            .field("enabled_features", &self.enabled_features)
+            .finish()
+        // f.write_fmt(format_args!("Available Extensions: {:?}", self.available_extensions))
     }
 }
 
@@ -532,7 +551,7 @@ mod tests {
             self
         }
 
-        pub fn add_supported_extension(mut self, extension_to_support: Extensions) -> Self {
+        pub fn add_supported_extension(mut self, extension_to_support: DeviceExtensions) -> Self {
             let mut extension_name: [std::os::raw::c_char; vk::MAX_EXTENSION_NAME_SIZE] = [0; vk::MAX_EXTENSION_NAME_SIZE];
                 
             // No need to include NUL byte since extension name is initilized with NUL bytes
@@ -680,29 +699,29 @@ mod tests {
     fn test_is_extension_available() {
         let instance = ConfigureDevice::create_test_instance();
         let configure = TestConfigureDeviceBuilder::new(&instance)
-            .add_supported_extension(Extensions::Surface)
-            .add_supported_extension(Extensions::Win32Surface)
+            .add_supported_extension(DeviceExtensions::Swapchain)
+            .add_supported_extension(DeviceExtensions::Swapchain)
             .build();
         // TODO: Fix test
         println!("{:?}", configure);
-        assert!(configure.is_extension_available(&Extensions::Swapchain) == false);
-        assert!(configure.is_extension_available(&Extensions::Surface));
+        assert!(configure.is_extension_available(&DeviceExtensions::Swapchain) == false);
+        assert!(configure.is_extension_available(&DeviceExtensions::Swapchain));
     }
 
     #[test]
     fn test_define_extension_available() {
         let instance = ConfigureDevice::create_test_instance();
         let mut configure = TestConfigureDeviceBuilder::new(&instance)
-            .add_supported_extension(Extensions::Surface)
-            .add_supported_extension(Extensions::Win32Surface)
+            .add_supported_extension(DeviceExtensions::Swapchain)
+            .add_supported_extension(DeviceExtensions::Swapchain)
             .build();
         // TODO: Some of these extensions are not device extensions but instance extensions
         println!("{:?}", configure);
         configure.extensions_to_load(|mng| {
-            mng.add_extension(Extensions::Surface);
-            mng.add_extension(Extensions::Swapchain);
+            mng.add_extension(DeviceExtensions::Swapchain);
+            mng.add_extension(DeviceExtensions::Swapchain);
         });
-        assert!(configure.extensions_to_load[&Extensions::Surface]);
-        assert!(configure.extensions_to_load[&Extensions::Swapchain] == false);
+        assert!(configure.extensions_to_load[&DeviceExtensions::Swapchain]);
+        assert!(configure.extensions_to_load[&DeviceExtensions::Swapchain] == false);
     }
 }

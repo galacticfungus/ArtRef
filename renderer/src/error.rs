@@ -1,13 +1,14 @@
 use std::ffi::CString;
 
-use crate::{Features, Extensions, Gpu};
+use crate::{Features, InstanceExtensions, DeviceExtensions, Gpu};
 
 use ash::vk;
 
 pub enum Error {
     ExtensionNotFound(CString),
     LayerNotFound(CString),
-    ExtensionsNotFound(Vec<Extensions>),
+    InstanceExtensionsNotFound(Vec<InstanceExtensions>),
+    DeviceExtensionsNotFound(Vec<DeviceExtensions>),
     NoGraphicsQueue,
     MissingRequiredDeviceExtensions(Vec<(Gpu, Vec<CString>)>),
     MissingFeature(Features),
@@ -39,7 +40,10 @@ impl std::fmt::Debug for Error {
             Error::LayerNotFound(layer_name) => {
                 f.write_fmt(format_args!("Could not load the layer: {:?}", layer_name))
             },
-            Error::ExtensionsNotFound(extensions) => {
+            Error::InstanceExtensionsNotFound(extensions) => {
+                f.write_fmt(format_args!("Could not load the following extensions: {:?}", extensions))
+            },
+            Error::DeviceExtensionsNotFound(extensions) => {
                 f.write_fmt(format_args!("Could not load the following extensions: {:?}", extensions))
             },
             Error::VulkanApiError(api_error) => {
@@ -83,7 +87,10 @@ impl std::fmt::Display for Error {
             Error::ExtensionNotFound(extension_name) => {
                 f.write_fmt(format_args!("Could not load the extension: {:?}", extension_name))
             },
-            Error::ExtensionsNotFound(extensions) => {
+            Error::InstanceExtensionsNotFound(extensions) => {
+                f.write_fmt(format_args!("Could not load the following extensions: {:?}", extensions))
+            },
+            Error::DeviceExtensionsNotFound(extensions) => {
                 f.write_fmt(format_args!("Could not load the following extensions: {:?}", extensions))
             },
             Error::LayerNotFound(layer_name) => {
@@ -129,7 +136,8 @@ impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::ExtensionNotFound(_) => None,
-            Self::ExtensionsNotFound(_) => None,
+            Self::InstanceExtensionsNotFound(_) => None,
+            Self::DeviceExtensionsNotFound(_) => None,
             Self::LayerNotFound(_) => None,
             Self::MissingRequiredDeviceExtensions(_) => None,
             Self::FailedToRecreateSurface => None,

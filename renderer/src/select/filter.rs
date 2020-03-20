@@ -1,4 +1,4 @@
-use super::{DeviceFilter, SupportDeviceFiltering, Gpu, DeviceSelector, FiltersDevices};
+use super::{DeviceFilter, SupportDeviceFiltering, Gpu, DeviceSelector, FiltersDevices, DeviceExtensions};
 use crate::{ExtensionManager, Features};
 use crate::error;
 
@@ -54,7 +54,7 @@ where
         select_extensions: F,
     ) -> Result<&'a mut T, error::Error>
     where
-        F: Fn(&mut ExtensionManager) -> (),
+        F: Fn(&mut ExtensionManager<DeviceExtensions>) -> (),
     {
         use std::ffi::CString;
         // TODO: Error handling code needs to destroy the instance - using drop wont work

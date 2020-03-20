@@ -10,7 +10,7 @@ pub use gpu::TestGpuBuilder;
 
 use std::ffi::CStr;
 
-use crate::{PciVendor, QueueFamily, Features};
+use crate::{PciVendor, QueueFamily, Features, DeviceExtensions};
 use crate::ExtensionManager;
 use crate::error;
 
@@ -44,7 +44,7 @@ pub trait FiltersDevices<'a> {
     fn is_integrated(&'a mut self) -> &'a mut Self;
     fn has_feature(&'a mut self, feature: &Features) -> &'a mut Self;
     fn required_device_extensions<F>(&'a mut self, select_extensions: F) -> Result<&'a mut Self, error::Error>
-        where F: Fn(&mut ExtensionManager) -> ();
+        where F: Fn(&mut ExtensionManager<DeviceExtensions>) -> ();
 }
 
 // Must be clonable so that errors can access a list of Gpu's

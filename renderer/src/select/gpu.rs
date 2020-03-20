@@ -1,4 +1,4 @@
-use crate::{QueueFamily, Features, Feature, PciVendor, Extensions};
+use crate::{QueueFamily, Features, Feature, PciVendor, DeviceExtensions};
 use super::Gpu;
 
 use ash::vk;
@@ -93,7 +93,7 @@ impl Gpu {
         false
     }
 
-    pub fn has_extension(&self, extension: &Extensions) -> bool {
+    pub fn has_extension(&self, extension: &DeviceExtensions) -> bool {
         // Convert the ExtensionProperty to a &CStr extension name
         for available_extension in self
             .available_extensions

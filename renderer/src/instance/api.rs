@@ -15,9 +15,9 @@ use std::ffi::CString;
 use std::os::raw::{c_char, c_void};
 
 use super::layers::LayerManager;
-use super::{DeviceSelector, VulkanDevice, Swapchain, ConfigureSwapchain, Surface, RenderDevice, ExtensionManager, Extensions, Layers};
+use super::{DeviceSelector, VulkanDevice, Swapchain, ConfigureSwapchain, Surface, RenderDevice, ExtensionManager, InstanceExtensions, Layers};
 
-use super::error;
+use crate::error;
 
 pub struct VulkanConfig {
     entry: ash::Entry,
@@ -26,7 +26,7 @@ pub struct VulkanConfig {
     application_version: u32,
     application_name: Option<String>,
     engine_name: Option<String>,
-    requested_extensions: HashMap<Extensions, bool>,
+    requested_extensions: HashMap<InstanceExtensions, bool>,
     available_extensions: Vec<vk::ExtensionProperties>,
     layers_to_load: HashMap<Layers, bool>,
     available_layers: Vec<vk::LayerProperties>,
@@ -96,14 +96,14 @@ impl VulkanConfig {
 
     pub fn required_extensions<F>(mut self, required_extensions: F) -> Result<Self, error::Error>
     where
-        F: Fn(&mut ExtensionManager) -> (),
+        F: Fn(&mut ExtensionManager<InstanceExtensions>) -> (),
     {
         
         let mut mng = ExtensionManager::new();
         required_extensions(&mut mng);
         // If any of the extensions couldn't be found return an error
         let requested_extensions = mng.get_extensions();
-        let mut extensions_to_add: HashMap<Extensions, bool> = HashMap::with_capacity(requested_extensions.len());
+        let mut extensions_to_add: HashMap<InstanceExtensions, bool> = HashMap::with_capacity(requested_extensions.len());
         for extension in requested_extensions {
             if self.is_extension_available(&extension) {
                 // TODO: Ensure these pointers are valid as they should point to static strings inside the ash library
@@ -113,13 +113,13 @@ impl VulkanConfig {
             }
         }
         if extensions_to_add.iter().any(|(_, present)| *present == false) {
-            let missing_extensions: Vec<Extensions> = self
+            let missing_extensions: Vec<InstanceExtensions> = self
                 .requested_extensions
                 .into_iter()
                 .filter(|(_, present)| *present == false)
                 .map(|(ext, _)| ext)
                 .collect();
-            return Err(error::Error::ExtensionsNotFound(missing_extensions));
+            return Err(error::Error::InstanceExtensionsNotFound(missing_extensions));
         }
         
         self.requested_extensions.extend(extensions_to_add.into_iter());
@@ -135,7 +135,7 @@ impl VulkanConfig {
 
     fn is_extension_available(
         &self,
-        extension: &Extensions,
+        extension: &InstanceExtensions,
     ) -> bool {
         for available_extension in self.available_extensions.iter().map(|ext| unsafe { CStr::from_ptr(ext.extension_name.as_ptr()) } ) {
             if available_extension == extension.get_name() {
@@ -147,7 +147,7 @@ impl VulkanConfig {
 
     pub fn optional_extensions<F>(mut self, optional_extensions: F) -> Self
     where
-        F: Fn(&mut ExtensionManager) -> (),
+        F: Fn(&mut ExtensionManager<InstanceExtensions>) -> (),
     {
         let mut mng = ExtensionManager::new();
         optional_extensions(&mut mng);
@@ -255,7 +255,7 @@ impl VulkanApi {
         DeviceSelector::new(&self.instance, surface)
     }
 
-    pub fn extension_loaded(&self, extension: super::Extensions) -> bool {
+    pub fn extension_loaded(&self, extension: super::InstanceExtensions) -> bool {
         self.extensions_loaded.contains(extension.get_name())
     }
 
@@ -310,8 +310,8 @@ mod tests {
             .application_version(1, 0, 0)
             .engine_version(1, 0, 0)
             .required_extensions(|mng| {
-                mng.add_extension(crate::Extensions::Win32Surface);
-                mng.add_extension(crate::Extensions::Surface);
+                mng.add_extension(crate::InstanceExtensions::Win32Surface);
+                mng.add_extension(crate::InstanceExtensions::Surface);
             })
             .expect("Failed to load extensions");
 
@@ -319,7 +319,7 @@ mod tests {
         assert_eq!(config.requested_extensions.len(), 2);
         let name_to_test = ash::extensions::khr::Win32Surface::name().as_ptr();
         // Requires a reference to a reference since normally this points to an array of pointers to static &CStr
-        assert_eq!(config.requested_extensions.get(&crate::Extensions::Win32Surface), Some(&true));
+        assert_eq!(config.requested_extensions.get(&crate::InstanceExtensions::Win32Surface), Some(&true));
         // println!("Loaded extensions are {:?}", config.requested_extensions);
     }
 
@@ -331,10 +331,10 @@ mod tests {
             .application_version(1, 0, 0)
             .engine_version(1, 0, 0)
             .optional_extensions(|mng| {
-                mng.add_extension(crate::Extensions::Win32Surface);
+                mng.add_extension(crate::InstanceExtensions::Win32Surface);
             });
         assert_eq!(config.requested_extensions.len(), 1);
         let vulkan = config.init();
-        assert!(vulkan.extension_loaded(Extensions::Win32Surface), true);
+        assert!(vulkan.extension_loaded(InstanceExtensions::Win32Surface), true);
     }
 }

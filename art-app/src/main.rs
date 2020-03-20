@@ -17,21 +17,21 @@ fn main() {
             mng.add_layer(renderer::Layers::KhronosValidation);
         })
         .optional_extensions(|mng| {
-            mng.add_extension(renderer::Extensions::DebugUtils);
+            mng.add_extension(renderer::InstanceExtensions::DebugUtils);
         })
         .required_extensions(|mng| {
-            mng.add_extension(renderer::Extensions::Surface);
-            mng.add_extension(renderer::Extensions::Win32Surface);
+            mng.add_extension(renderer::InstanceExtensions::Surface);
+            mng.add_extension(renderer::InstanceExtensions::Win32Surface);
         })
         .expect("Failed to load surface extensions")
         .init();
-    assert!(vulkan_api.extension_loaded(renderer::Extensions::DebugUtils));
+    assert!(vulkan_api.extension_loaded(renderer::InstanceExtensions::DebugUtils));
     let mut surface = vulkan_api.create_surface_win32(hwnd, hinstance);
     let mut selector = vulkan_api.create_selector(&mut surface).expect("Failed to create selector");
     let mut device_config = selector.is_discrete()
                                 .required_device_extensions(|mng| {
                                     // Filter out any devices that dont support a swap chain
-                                    mng.add_extension(renderer::Extensions::Swapchain);
+                                    mng.add_extension(renderer::DeviceExtensions::Swapchain);
                                 })
                                 .expect("Failed to load required device extensions")
                                 // If the device is an nvidia device
