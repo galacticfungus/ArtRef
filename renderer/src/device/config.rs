@@ -6,20 +6,20 @@ use std::ffi::CStr;
 use std::collections::HashMap;
 
 // use super::Gpu;
-use super::{QueueFamily, QueueToCreate, PciVendor, Features, Feature, ExtensionManager, DeviceExtensions};
-use super::VulkanDevice;
+use super::{QueueFamily, PciVendor, Features, Feature, ExtensionManager, DeviceExtensions, QueueManager, VulkanDevice, PresentMode};
 use crate::error;
+use crate::{Version, PickManager};
 
 // Notes from Nvidia: Don’t overlap compute work on the graphics queue with compute work on a
 // dedicated asynchronous compute queue. This may lead to gaps in execution of the
 // asynchronous compute queue
 
-// Responsible for creating the device, helps with queue creation as well as enabling features
+// Responsible for configuring the underlying device, creating queues, enabling features, loading device extensions and specifying surface parameters
 pub struct ConfigureDevice<'a> {
     instance: &'a ash::Instance,
     device_handle: vk::PhysicalDevice,
     queue_families: Vec<QueueFamily>,
-    api_version: u32,
+    api_version: Version,
     driver_version: u32,
     vendor_id: PciVendor,
     device_id: u32,
@@ -33,7 +33,7 @@ pub struct ConfigureDevice<'a> {
     surface_formats: Vec<vk::SurfaceFormatKHR>,
     present_modes: Vec<vk::PresentModeKHR>,
     present_mode: vk::PresentModeKHR,
-    // queue_data: Vec<QueueFamilyData>,
+    surface_format: vk::SurfaceFormatKHR,
 }
 
 impl<'a> ConfigureDevice<'a> {
@@ -55,7 +55,7 @@ impl<'a> ConfigureDevice<'a> {
             instance,
             device_handle,
             queue_families,
-            api_version,
+            api_version: Version::from(api_version),
             driver_version,
             vendor_id,
             device_id,
@@ -68,13 +68,13 @@ impl<'a> ConfigureDevice<'a> {
             surface_capabilities,
             surface_formats,
             present_modes,
-            // This mode is guarenteed to be available
+            // This mode is guarenteed to be available so we use it as the default
             present_mode: vk::PresentModeKHR::FIFO,
+            surface_format: vk::SurfaceFormatKHR::default(),
         }
     }
 
-    // queues -- add_queue | based on families
-
+    // Retrieve a handle to a feature to either check its availability or enable that feature
     pub fn feature(&mut self, feature: &Features) -> Feature {
         match feature {
             Features::GeometryShader => Feature::new(
@@ -108,13 +108,14 @@ impl<'a> ConfigureDevice<'a> {
 
     /// The mode picked is the first one available that is added to the list, The default mode is Fifo as that mode is guarenteed to be available
     pub fn select_present_mode<F>(&mut self, select_mode :F) -> Result<&mut Self, error::Error> 
-    where F: Fn(&mut PresentModeManager) -> (),
+    where F: Fn(&mut PickManager<PresentMode>) -> (),
     {
         let mut modes_picked = Vec::new();
-        let mut picker = PresentModeManager::new(&mut modes_picked);
+        let mut picker = PickManager::new(&mut modes_picked);
         select_mode(&mut picker);
         // The picker must return a valid option
         // iterate over the choices selecting the first one that is available
+        // TODO: This can be moved into PickManager
         for mode in modes_picked {
             let actual_mode: vk::PresentModeKHR = mode.into();
             if self.present_modes.contains(&actual_mode) {
@@ -124,6 +125,34 @@ impl<'a> ConfigureDevice<'a> {
         }
         // The default mode is Fifo so no need to reset it
         Ok(self)
+    }
+
+    pub fn select_surface_format<F>(&mut self, select_format: F) -> &mut Self 
+    where F: Fn(&mut PickManager<vk::SurfaceFormatKHR>) -> (),
+    {
+        let gu = self.surface_formats[0];
+        let ob = vk::SurfaceFormatKHR::default();
+        let ass = ob.format;
+        self.surface_format.format = vk::Format::R8G8B8A8_SRGB;
+        //ash::vk::Format::R8G8B8A8_SRGB
+        //ash::vk::ColorSpaceKHR::SRGB_NONLINEAR
+        self
+    }
+
+    pub fn select_surface_colour_space<F>(&mut self, select_colour_space: F) -> &mut Self
+    where F: Fn() -> () {
+        self.surface_format.color_space = vk::ColorSpaceKHR::SRGB_NONLINEAR;
+        self
+    }
+
+    pub fn select_extent<F>(&mut self, extent: F) -> &mut Self
+    where F: Fn(&vk::Extent2D, &vk::Extent2D, &vk::Extent2D) -> () {
+        // TODO: Define a helper extent struct to make this easier
+        // TODO: Something like maxHeight MaxWidth minHeight maxHeight currentHeight currentWidth - as well as helper methods
+        // if extent is 0,0 then window is minimized or hidden, basically it's surface is currently unavailable
+        extent(&self.surface_capabilities.min_image_extent, &self.surface_capabilities.max_image_extent, &self.surface_capabilities.current_extent);
+        let g = vk::Extent2D::default();
+        self
     }
 
     pub fn extensions_to_load<F>(
@@ -299,19 +328,11 @@ impl<'a> ConfigureDevice<'a> {
 
 impl<'a> std::fmt::Debug for ConfigureDevice<'a> {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        pub struct VkVersion {
-            version: u32,
-        }
-
-        impl std::fmt::Debug for VkVersion {
-            fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                fmt.write_fmt(format_args!("{}.{}.0", self.version >> 22, (self.version >> 12) & 0x3ff))
-            }
-        }
         // TODO: Create a VulkanVersion struct
         fmt.debug_struct("DeviceConfigure")
             .field("available_extensions", &self.available_extensions)
-            .field("api_version", &VkVersion { version: self.api_version })
+            .field("api_version", &self.api_version)
+            // Safe since device_name must be a CStr and the string itself will always be valid for the lifetime of the pointer
             .field("device_name", unsafe { &CStr::from_ptr(self.device_name.as_ptr()) } )
             .field("device_features", &self.device_features)
             .field("device_type", &self.device_type)
@@ -322,173 +343,13 @@ impl<'a> std::fmt::Debug for ConfigureDevice<'a> {
     }
 }
 
-pub struct PresentModeManager<'a> {
-    modes_picked: &'a mut Vec<PresentMode>,
-}
-
-impl<'a> PresentModeManager<'a> {
-    pub fn new(modes_picked: &'a mut Vec<PresentMode>) -> PresentModeManager {
-        PresentModeManager {
-            modes_picked,
-        }
-    }
-
-    pub fn pick_mode(&mut self, mode: PresentMode) -> &mut Self {
-        self.modes_picked.push(mode);
-        self
-    }
-}
-
-#[derive(Debug)]
-// This class does not create any actual queues it merely gathers all the queues that the user wants to
-// create in order to hopefully optimize queue creation, in addition it performs no validation of the results
-// Meaning that if a queue could no
-pub struct QueueManager<'a> {
-    queues_to_create: Vec<QueueToCreate>,
-    family_data: &'a [QueueFamily],
-    index: usize, // Index of the next queue that is create
-}
-
-impl<'a> QueueManager<'a> {
-    pub fn new(family_data: &'a [QueueFamily]) -> QueueManager {
-        QueueManager {
-            queues_to_create: Vec::new(),
-            family_data,
-            index: 0,
-        }
-    }
-    /// Returns the number of queues that support the required flags
-    pub fn queues_that_support(&self, operations_required: vk::QueueFlags) -> usize {
-        self.family_data
-            .iter()
-            .filter(|family| family.flags() & operations_required == operations_required)
-            .map(|family| family.total_queues() as usize)
-            .sum()
-    }
-    /// Returns the number of queues that can present to a surface
-    pub fn queues_that_present(&self) -> usize {
-        // TODO: Should we display a warning when we encounter queues that have a presentable of None since that means they have not been checked
-        self.family_data
-            .iter()
-            .filter(|family| family.presentable() == true)
-            .map(|family| family.total_queues() as usize)
-            .sum()
-    }
-    /// Returns the total number of queues across all queue families
-    pub fn total_queues(&self) -> usize {
-        self.family_data
-            .iter()
-            .map(|family| family.total_queues() as usize)
-            .sum()
-    }
-    
-    /// Creates a queue that supports the given operations from the best fitting queue family
-    /// The family is decided by  picking the family that supports the leat amount of operations
-    /// requested. In addition if the must preent flag is true then the queue created will be
-    /// able to present to the surface.
-    // TODO: What surface, at the moment its the surface that was passed as a parameter to the device selector
-    pub fn create_queue_that_supports(
-        &mut self,
-        required_operations: vk::QueueFlags,
-        priority: f32,
-        must_present: bool,
-    ) {
-        self.queues_to_create.push(QueueToCreate::new(
-            required_operations,
-            priority,
-            self.index,
-            must_present,
-        ));
-        self.index += 1;
-    }
-
-    pub fn create_graphics_queue(&mut self, priority: f32, must_present: bool) {
-        self.create_queue_that_supports(vk::QueueFlags::GRAPHICS, priority, must_present);
-    }
-
-    pub fn create_transfer_queue(&mut self, priority: f32) {
-        self.create_queue_that_supports(vk::QueueFlags::TRANSFER, priority, false);
-    }
-
-    pub fn create_compute_queue(&mut self, priority: f32) {
-        self.create_queue_that_supports(vk::QueueFlags::COMPUTE, priority, false);
-    }
-
-    pub fn create_sparse_queue(&mut self, priority: f32) {
-        self.create_queue_that_supports(vk::QueueFlags::SPARSE_BINDING, priority, false);
-    }
-}
-
-pub enum PresentMode {
-    /// Specifies that the presentation engine does not wait for a vertical blanking period to update the current image, meaning 
-    /// this mode may result in visible tearing. No internal queuing of presentation requests is needed, as the requests are applied immediately.
-    Immediate,
-    /// Mailbox specifies that the presentation engine waits for the next vertical blanking period to update the current image.
-    /// Tearing cannot be observed. An internal single-entry queue is used to hold pending presentation requests. If the queue is full when a 
-    /// new presentation request is received, the new request replaces the existing entry, and any images associated with the prior entry become 
-    /// available for re-use by the application. One request is removed from the queue and processed during each vertical blanking period in which 
-    /// the queue is non-empty.
-    Mailbox,
-    /// VK_PRESENT_MODE_FIFO_KHR specifies that the presentation engine waits for the next vertical blanking period to update the current image.
-    /// Tearing cannot be observed. An internal queue is used to hold pending presentation requests. New requests are appended to the end of the queue,
-    /// and one request is removed from the beginning of the queue and processed during each vertical blanking period in which the queue is non-empty.
-    /// This is the only value of presentMode that is required to be supported.
-    Fifo,
-    /// VK_PRESENT_MODE_FIFO_RELAXED_KHR specifies that the presentation engine generally waits for the next vertical blanking period to update the
-    /// current image. If a vertical blanking period has already passed since the last update of the current image then the presentation engine does
-    /// not wait for another vertical blanking period for the update, meaning this mode may result in visible tearing in this case. This mode is useful
-    /// for reducing visual stutter with an application that will mostly present a new image before the next vertical blanking period, but may occasionally
-    /// be late, and present a new image just after the next vertical blanking period. An internal queue is used to hold pending presentation requests.
-    /// New requests are appended to the end of the queue, and one request is removed from the beginning of the queue and processed during or after each
-    /// vertical blanking period in which the queue is non-empty.
-    FifoRelaxed,
-    /// SharedDemandRefresh specifies that the presentation engine and application have concurrent access to a single image, which is
-    /// referred to as a shared presentable image. The presentation engine is only required to update the current image after a new presentation request is
-    /// received. Therefore the application must make a presentation request whenever an update is required. However, the presentation engine may update the
-    /// current image at any point, meaning this mode may result in visible tearing.
-    SharedDemandRefresh,
-    /// SharedContinuousRefresh specifies that the presentation engine and application have concurrent access to a single image, which is referred to as a
-    /// shared presentable image. The presentation engine periodically updates the current image on its regular refresh cycle. The application is only required
-    /// to make one initial presentation request, after which the presentation engine must update the current image without any need for further presentation
-    /// requests. The application can indicate the image contents have been updated by making a presentation request, but this does not guarantee the timing of
-    /// when it will be updated. This mode may result in visible tearing if rendering to the image is not timed correctly.
-    SharedContinuousRefresh,
-}
-
-impl std::convert::From<ash::vk::PresentModeKHR> for PresentMode {
-    fn from(present_mode: vk::PresentModeKHR) -> Self {
-        match present_mode {
-            vk::PresentModeKHR::IMMEDIATE => PresentMode::Immediate,
-            vk::PresentModeKHR::MAILBOX => PresentMode::Mailbox,
-            vk::PresentModeKHR::FIFO => PresentMode::Fifo,
-            vk::PresentModeKHR::FIFO_RELAXED => PresentMode::FifoRelaxed,
-            vk::PresentModeKHR::SHARED_DEMAND_REFRESH => PresentMode::SharedDemandRefresh,
-            vk::PresentModeKHR::SHARED_CONTINUOUS_REFRESH => PresentMode::SharedContinuousRefresh,
-            _ => unreachable!("Unknown present mode found when converting a PresentModeKHR"),
-        }
-    }
-}
-
-impl std::convert::From<PresentMode> for ash::vk::PresentModeKHR {
-    fn from(present_mode: PresentMode) -> Self {
-        match present_mode {
-            PresentMode::Immediate => vk::PresentModeKHR::IMMEDIATE,
-            PresentMode::Mailbox => vk::PresentModeKHR::MAILBOX,
-            PresentMode::Fifo => vk::PresentModeKHR::FIFO,
-            PresentMode::FifoRelaxed => vk::PresentModeKHR::FIFO_RELAXED,
-            PresentMode::SharedDemandRefresh => vk::PresentModeKHR::SHARED_DEMAND_REFRESH,
-            PresentMode::SharedContinuousRefresh => vk::PresentModeKHR::SHARED_CONTINUOUS_REFRESH,
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
+    use crate::PresentMode;
     pub struct TestConfigureDeviceBuilder<'a> {
         queue_families: Vec<QueueFamily>,
-        api_version: Option<u32>,
+        api_version: Option<Version>,
         driver_version: Option<u32>,
         vendor_id: Option<PciVendor>,
         instance: &'a ash::Instance,
@@ -500,7 +361,7 @@ mod tests {
         // enabled_features: Option<vk::PhysicalDeviceFeatures>,
         // surface_capabilities: Option<vk::SurfaceCapabilitiesKHR>,
         // surface_formats: Option<Vec<vk::SurfaceFormatKHR>>,
-        // present_modes: Option<Vec<vk::PresentModeKHR>>,
+        present_modes: Option<Vec<vk::PresentModeKHR>>,
     }
 
     impl<'a> TestConfigureDeviceBuilder<'a> {
@@ -514,6 +375,7 @@ mod tests {
                 device_type: None,
                 queue_families: Vec::default(),
                 available_extensions: None,
+                present_modes: None,
             }
         }
 
@@ -528,11 +390,11 @@ mod tests {
         }
 
         pub fn pick_api_version(mut self, major: u32, minor: u32) {
-            self.api_version = Some(ash::vk_make_version!(major, minor, 0));
+            self.api_version = Some(Version::from(ash::vk_make_version!(major, minor, 0)));
         }
 
-        pub fn pick_driver_version(mut self, major: u32, minor: u32, build: u32) {
-            self.driver_version = Some(ash::vk_make_version!(major, minor, 0));
+        pub fn pick_driver_version(mut self, version: u32) {
+            self.driver_version = Some(version);
         }
 
         pub fn pick_device_name(mut self, device_name: &str) -> Self {
@@ -561,7 +423,7 @@ mod tests {
             let mutable_slice_of_array = &mut extension_name.as_mut()[..source_bytes.len()];
             // This is done to ensure that the byte sign is the same regardless of platform
             let character_byte_slice = unsafe{ std::slice::from_raw_parts(source_bytes.as_ptr() as *const std::os::raw::c_char, source_bytes.len()) };
-            // unsafe { std::ptr::copy_nonoverlapping(b, extension_name.as_mut(), b.len()) };
+            // This copies the contents of extension_to_support.extension_name to the extension_name array
             mutable_slice_of_array.copy_from_slice(character_byte_slice);
             let raw_extension = vk::ExtensionProperties {
                 extension_name,
@@ -573,6 +435,17 @@ mod tests {
             } else {
                 let extensions = vec![raw_extension];
                 self.available_extensions = Some(extensions);
+            }
+            self
+        }
+
+        pub fn add_present_mode(mut self, present_mode: vk::PresentModeKHR) -> Self {
+            if let Some(present_modes) = &mut self.present_modes {
+                present_modes.push(present_mode);
+            } else {
+                let mut present_modes = Vec::new();
+                present_modes.push(present_mode);
+                self.present_modes = Some(present_modes);
             }
             self
         }
@@ -600,8 +473,10 @@ mod tests {
                 enabled_features: Default::default(),
                 surface_formats: Default::default(),
                 surface_capabilities: vk::SurfaceCapabilitiesKHR::default(),
-                present_modes: Vec::default(),
+                present_modes: self.present_modes.unwrap_or(Default::default()),
+                // TODO: Present mode and surface format should default to None
                 present_mode: vk::PresentModeKHR::default(),
+                surface_format: vk::SurfaceFormatKHR::default(),
             }
         }
     }
@@ -723,5 +598,23 @@ mod tests {
         });
         assert!(configure.extensions_to_load[&DeviceExtensions::Swapchain]);
         assert!(configure.extensions_to_load[&DeviceExtensions::Swapchain] == false);
+    }
+
+    #[test]
+    fn test_adding_present_modes() {
+        let instance = ConfigureDevice::create_test_instance();
+        let mut configure = TestConfigureDeviceBuilder::new(&instance)
+            .add_present_mode(vk::PresentModeKHR::FIFO)
+            .add_present_mode(vk::PresentModeKHR::MAILBOX)
+            .build();
+        // TODO: Some of these extensions are not device extensions but instance extensions
+        println!("{:?}", configure);
+        let result = configure.select_present_mode(|mng| {
+            mng.pick_mode(PresentMode::Immediate);
+            mng.pick_mode(PresentMode::Mailbox);
+            mng.pick_mode(PresentMode::Fifo);
+        }).expect("Failed to select a present mode");
+        // First mode picked is the first one that is available
+        assert_eq!(result.present_mode, vk::PresentModeKHR::MAILBOX);
     }
 }

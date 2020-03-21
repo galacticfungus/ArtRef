@@ -3,6 +3,7 @@ use super::{PciVendor, DeviceExtensions};
 use std::ffi::CStr;
 use std::os::raw::c_char;
 use std::collections::HashMap;
+use crate::Version;
 
 use super::VulkanDevice;
 
@@ -17,7 +18,7 @@ impl VulkanDevice {
         device: ash::Device,
         vendor_id: PciVendor,
         device_id: u32,
-        api_version: u32,
+        api_version: Version,
         driver_version: u32,
         device_name: [c_char; vk::MAX_PHYSICAL_DEVICE_NAME_SIZE]) -> VulkanDevice {
         VulkanDevice {

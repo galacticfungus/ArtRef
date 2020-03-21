@@ -1,5 +1,7 @@
 mod instance;
 mod error;
+mod pick;
+mod version;
 mod device;
 mod extensions;
 mod features;
@@ -11,6 +13,8 @@ mod render;
 mod swapchain;
 
 pub use crate::error::Error;
+pub use pick::PickManager;
+pub use version::Version;
 pub use instance::VulkanApi;
 pub use instance::VulkanConfig;
 pub use extensions::ExtensionManager;
@@ -36,7 +40,6 @@ mod tests {
     use winit;
     #[test]
     fn test_api_config() {
-        let entry = ash::Entry::new().expect("Failed to load Vulkan");
         //entry.try_enumerate_instance_version();
         let vulkan_api = VulkanConfig::new()
             .api_version(1, 0, 0)
@@ -47,10 +50,10 @@ mod tests {
             .required_extensions(|mng| {
                 mng.add_extension(InstanceExtensions::Surface);
                 mng.add_extension(InstanceExtensions::Win32Surface);
+            }).expect("Failed to load required instance extensions")
+            .optional_extensions(|mng| {
+                mng.add_extension(InstanceExtensions::DebugUtils);
             })
-            .expect("Failed to load extensions")
-            // .optional_extensions(|mng| {
-            // })
             .with_layers(|mng| {
                 mng.add_layer(Layers::KhronosValidation);
             })
@@ -64,7 +67,13 @@ mod tests {
         let hinstance = window.hinstance();
         let mut surface = vulkan_api.create_surface_win32(hwnd, hinstance);
         let mut selector = vulkan_api.create_selector(&mut surface).expect("Test Selector");
-        let device = selector.select_device();
+        let mut config = selector.required_device_extensions(|mng| {
+                mng.add_extension(DeviceExtensions::Swapchain);
+            }).expect("Required Device Extensions Missing")
+            .select_device();
+        let device = config.extensions_to_load(|mng| {
+            mng.add_extension(DeviceExtensions::Swapchain);
+        });
         println!("{:?}", device);
         // TODO: Test something
     }

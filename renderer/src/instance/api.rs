@@ -272,7 +272,7 @@ impl VulkanApi {
 
     pub fn configure_swapchain(&self, device: &VulkanDevice, surface: Surface) -> ConfigureSwapchain {
         ConfigureSwapchain {
-            
+            // Do we set format, colour space and extent for the surface here or during device configure
         }
     }
 
@@ -280,6 +280,13 @@ impl VulkanApi {
         RenderDevice {
 
         }
+    }
+}
+
+impl Drop for VulkanApi {
+    fn drop(&mut self) {
+        use ash::version::InstanceV1_0;
+        unsafe { self.instance.destroy_instance(None) };
     }
 }
 

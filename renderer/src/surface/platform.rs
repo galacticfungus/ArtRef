@@ -59,3 +59,9 @@ impl<'a> Surface<'a> {
         Ok(())
     }
 }
+
+impl<'a> Drop for Surface<'a> {
+    fn drop(&mut self) {
+        unsafe { self.surface_extension.destroy_surface(self.platform_surface, None) };
+    }
+}
