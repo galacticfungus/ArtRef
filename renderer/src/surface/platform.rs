@@ -13,7 +13,7 @@ pub struct Surface<'a> {
     pub(super) entry: &'a ash::Entry,
     pub(super) instance: &'a ash::Instance,
     // This is the Surface used by Vulkan
-    pub(super) platform_surface: vk::SurfaceKHR,
+    pub(crate) platform_surface: vk::SurfaceKHR,
     pub(super) surface_extension: ash::extensions::khr::Surface,
     pub(super) hwnd: *const c_void,
     pub(super) hinstance: *const c_void,

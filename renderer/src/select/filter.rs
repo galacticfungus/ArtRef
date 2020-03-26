@@ -24,10 +24,6 @@ impl SupportDeviceFiltering for DeviceFilter {
     fn devices_mut(&mut self) -> &mut Vec<Gpu> {
         &mut self.devices_to_filter
     }
-
-    fn extensions(&mut self, extensions_to_load: Vec<&'static CStr>) {
-        self.extensions_to_load = extensions_to_load;
-    }
 }
 
 impl<'a> SupportDeviceFiltering for DeviceSelector<'a> {
@@ -37,10 +33,6 @@ impl<'a> SupportDeviceFiltering for DeviceSelector<'a> {
 
     fn devices_mut(&mut self) -> &mut Vec<Gpu> {
         &mut self.suitable_devices
-    }
-
-    fn extensions(&mut self, extensions_to_load: Vec<&'static CStr>) {
-        self.extensions_to_load = extensions_to_load;
     }
 }
 
@@ -77,7 +69,9 @@ where
             })
             .map(|(index, _)| index)
             .collect();
-        
+        if filtered_devices.is_empty() {
+            return Ok(self)
+        }
         if filtered_devices.len() > 0 && filtered_devices.len() < self.devices().len() {
             // Can apply filter
             let devices_to_filter = self.devices_mut();
@@ -85,27 +79,21 @@ where
                 devices_to_filter.swap_remove(index);
             }
         } else {
-            // There are two ways we can get here
-            // 1) - If there are no devices that support the required extensions
-            // 2) - All the devices support the required extensions
-            // only the first is a problem
-            if filtered_devices.is_empty() {
-                // Return both the device and the extensions that were missing as part of the error
-                let devices: Vec<(Gpu, Vec<CString>)> = self.devices()
-                    .into_iter()
-                    .map(|device| {
-                        let mut missing_extensions: Vec<CString> = Vec::new();
-                        for extension in requested_extensions.iter() {
-                            if device.has_extension(extension) == false {
-                                missing_extensions.push(extension.get_name().to_owned());
-                            }
+            // Check that there are some devices left otherwise no devices supported the required extensions
+            let devices: Vec<(Gpu, Vec<CString>)> = self.devices()
+                .into_iter()
+                .map(|device| {
+                    let mut missing_extensions: Vec<CString> = Vec::new();
+                    for extension in requested_extensions.iter() {
+                        if device.has_extension(extension) == false {
+                            missing_extensions.push(extension.get_name().to_owned());
                         }
-                        // devices needs to last as long as self ie the selector
-                        (device.clone(), missing_extensions)
-                    })
-                    .collect();
-                return Err(error::Error::MissingRequiredDeviceExtensions(devices));
-            }
+                    }
+                    // devices needs to last as long as self ie the selector
+                    (device.clone(), missing_extensions)
+                })
+                .collect();
+            return Err(error::Error::MissingRequiredDeviceExtensions(devices));
         }
         // Set the new extensions to load - if no devices supporting these extensions were found this point is never reached
         // TODO: Add an extension one at a time

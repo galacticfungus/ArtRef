@@ -6,35 +6,13 @@ use std::ffi::CStr;
 use std::collections::HashMap;
 
 // use super::Gpu;
-use super::{QueueFamily, PciVendor, Features, Feature, ExtensionManager, DeviceExtensions, QueueManager, VulkanDevice, PresentMode};
+use super::{QueueFamily, PciVendor, Features, Feature, ExtensionManager, DeviceExtensions, QueueManager, ConfigureDevice};
 use crate::error;
-use crate::{Version, PickManager};
+use crate::{Version, VulkanDevice};
 
 // Notes from Nvidia: Don’t overlap compute work on the graphics queue with compute work on a
 // dedicated asynchronous compute queue. This may lead to gaps in execution of the
 // asynchronous compute queue
-
-// Responsible for configuring the underlying device, creating queues, enabling features, loading device extensions and specifying surface parameters
-pub struct ConfigureDevice<'a> {
-    instance: &'a ash::Instance,
-    device_handle: vk::PhysicalDevice,
-    queue_families: Vec<QueueFamily>,
-    api_version: Version,
-    driver_version: u32,
-    vendor_id: PciVendor,
-    device_id: u32,
-    device_name: [i8; ash::vk::MAX_PHYSICAL_DEVICE_NAME_SIZE],
-    device_type: vk::PhysicalDeviceType,
-    available_extensions: Vec<vk::ExtensionProperties>,
-    extensions_to_load: HashMap<DeviceExtensions, bool>,
-    device_features: vk::PhysicalDeviceFeatures,
-    enabled_features: vk::PhysicalDeviceFeatures,
-    surface_capabilities: vk::SurfaceCapabilitiesKHR,
-    surface_formats: Vec<vk::SurfaceFormatKHR>,
-    present_modes: Vec<vk::PresentModeKHR>,
-    present_mode: vk::PresentModeKHR,
-    surface_format: vk::SurfaceFormatKHR,
-}
 
 impl<'a> ConfigureDevice<'a> {
     pub fn new(instance: &'a ash::Instance, 
@@ -68,9 +46,6 @@ impl<'a> ConfigureDevice<'a> {
             surface_capabilities,
             surface_formats,
             present_modes,
-            // This mode is guarenteed to be available so we use it as the default
-            present_mode: vk::PresentModeKHR::FIFO,
-            surface_format: vk::SurfaceFormatKHR::default(),
         }
     }
 
@@ -106,55 +81,6 @@ impl<'a> ConfigureDevice<'a> {
         self
     }
 
-    /// The mode picked is the first one available that is added to the list, The default mode is Fifo as that mode is guarenteed to be available
-    pub fn select_present_mode<F>(&mut self, select_mode :F) -> Result<&mut Self, error::Error> 
-    where F: Fn(&mut PickManager<PresentMode>) -> (),
-    {
-        let mut modes_picked = Vec::new();
-        let mut picker = PickManager::new(&mut modes_picked);
-        select_mode(&mut picker);
-        // The picker must return a valid option
-        // iterate over the choices selecting the first one that is available
-        // TODO: This can be moved into PickManager
-        for mode in modes_picked {
-            let actual_mode: vk::PresentModeKHR = mode.into();
-            if self.present_modes.contains(&actual_mode) {
-                self.present_mode = actual_mode;
-                break;
-            }
-        }
-        // The default mode is Fifo so no need to reset it
-        Ok(self)
-    }
-
-    pub fn select_surface_format<F>(&mut self, select_format: F) -> &mut Self 
-    where F: Fn(&mut PickManager<vk::SurfaceFormatKHR>) -> (),
-    {
-        let gu = self.surface_formats[0];
-        let ob = vk::SurfaceFormatKHR::default();
-        let ass = ob.format;
-        self.surface_format.format = vk::Format::R8G8B8A8_SRGB;
-        //ash::vk::Format::R8G8B8A8_SRGB
-        //ash::vk::ColorSpaceKHR::SRGB_NONLINEAR
-        self
-    }
-
-    pub fn select_surface_colour_space<F>(&mut self, select_colour_space: F) -> &mut Self
-    where F: Fn() -> () {
-        self.surface_format.color_space = vk::ColorSpaceKHR::SRGB_NONLINEAR;
-        self
-    }
-
-    pub fn select_extent<F>(&mut self, extent: F) -> &mut Self
-    where F: Fn(&vk::Extent2D, &vk::Extent2D, &vk::Extent2D) -> () {
-        // TODO: Define a helper extent struct to make this easier
-        // TODO: Something like maxHeight MaxWidth minHeight maxHeight currentHeight currentWidth - as well as helper methods
-        // if extent is 0,0 then window is minimized or hidden, basically it's surface is currently unavailable
-        extent(&self.surface_capabilities.min_image_extent, &self.surface_capabilities.max_image_extent, &self.surface_capabilities.current_extent);
-        let g = vk::Extent2D::default();
-        self
-    }
-
     pub fn extensions_to_load<F>(
         &mut self,
         select_extensions: F,
@@ -165,6 +91,7 @@ impl<'a> ConfigureDevice<'a> {
         let mut mng = ExtensionManager::new();
         select_extensions(&mut mng);
         let extensions_to_load = mng.get_extensions();
+        println!("Extensions being added: {:?}", extensions_to_load);
         // Add the extensions selected to the list of extensions to load marking whether that extension is available
         for extension in extensions_to_load {
             if self.is_extension_available(&extension) {
@@ -222,10 +149,6 @@ impl<'a> ConfigureDevice<'a> {
     }
 
     pub fn create_device(self) -> VulkanDevice {
-        // Create Vulkan structs from self.queues_to_create
-        // Each family queue becomes a struct sent to
-        // let Self { instance, gpu } = self;
-
         let mut queue_map = HashMap::new();
         let mut queues_to_submit = Vec::new();
         println!("Creating Queues");
@@ -338,6 +261,7 @@ impl<'a> std::fmt::Debug for ConfigureDevice<'a> {
             .field("device_type", &self.device_type)
             .field("driver_version", &self.driver_version)
             .field("enabled_features", &self.enabled_features)
+            .field("Surface Formats", &self.surface_formats)
             .finish()
         // f.write_fmt(format_args!("Available Extensions: {:?}", self.available_extensions))
     }
@@ -474,9 +398,6 @@ mod tests {
                 surface_formats: Default::default(),
                 surface_capabilities: vk::SurfaceCapabilitiesKHR::default(),
                 present_modes: self.present_modes.unwrap_or(Default::default()),
-                // TODO: Present mode and surface format should default to None
-                present_mode: vk::PresentModeKHR::default(),
-                surface_format: vk::SurfaceFormatKHR::default(),
             }
         }
     }
@@ -600,21 +521,5 @@ mod tests {
         assert!(configure.extensions_to_load[&DeviceExtensions::Swapchain] == false);
     }
 
-    #[test]
-    fn test_adding_present_modes() {
-        let instance = ConfigureDevice::create_test_instance();
-        let mut configure = TestConfigureDeviceBuilder::new(&instance)
-            .add_present_mode(vk::PresentModeKHR::FIFO)
-            .add_present_mode(vk::PresentModeKHR::MAILBOX)
-            .build();
-        // TODO: Some of these extensions are not device extensions but instance extensions
-        println!("{:?}", configure);
-        let result = configure.select_present_mode(|mng| {
-            mng.pick_mode(PresentMode::Immediate);
-            mng.pick_mode(PresentMode::Mailbox);
-            mng.pick_mode(PresentMode::Fifo);
-        }).expect("Failed to select a present mode");
-        // First mode picked is the first one that is available
-        assert_eq!(result.present_mode, vk::PresentModeKHR::MAILBOX);
-    }
+    
 }

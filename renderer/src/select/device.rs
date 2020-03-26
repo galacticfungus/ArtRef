@@ -21,7 +21,7 @@ impl<'a> DeviceSelector<'a> {
         (gpu_presentable, device_queues)
     }
     
-    fn get_surface_properties(physical_device: vk::PhysicalDevice, surface: &mut Surface) -> Result<(vk::SurfaceCapabilitiesKHR, Vec<vk::SurfaceFormatKHR>, Vec<vk::PresentModeKHR>), error::Error> {    
+    fn get_surface_properties(physical_device: vk::PhysicalDevice, surface: &mut Surface) -> Result<(vk::SurfaceCapabilitiesKHR, Vec<vk::SurfaceFormatKHR>, Vec<vk::PresentModeKHR>), error::Error> {
         // Get surface characteristics
         let surface_capabilities = surface.get_surface_capabilities(physical_device)?;
         let surface_formats = surface.get_surface_formats(physical_device)?;
@@ -93,7 +93,6 @@ impl<'a> DeviceSelector<'a> {
         let selector = DeviceSelector {
             instance,
             suitable_devices: available_devices,
-            extensions_to_load: Vec::default(),
         };
         Ok(selector)
     }
@@ -124,24 +123,10 @@ impl<'a> DeviceSelector<'a> {
         self
     }
 
-    pub fn select_device(&mut self) -> ConfigureDevice<'a> {
+    pub fn select_device(&mut self) -> Gpu {
         // TODO: Is this really optimal, we can use some inherit qualities of the remaining devices to pick one, ie available memory
         let device_picked = self.suitable_devices.swap_remove(0);
-        ConfigureDevice::new(
-            self.instance, 
-            device_picked.device_handle, 
-            device_picked.queue_families, 
-            device_picked.api_version, 
-            device_picked.driver_version,
-            device_picked.vendor_id,
-            device_picked.device_id,
-            device_picked.device_name,
-            device_picked.device_type,
-            device_picked.available_extensions,
-            device_picked.device_features,
-            device_picked.surface_capabilities,
-            device_picked.surface_formats,
-            device_picked.present_modes)
+        device_picked
     }
 }
 

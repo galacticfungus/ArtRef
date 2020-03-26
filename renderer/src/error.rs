@@ -1,6 +1,6 @@
 use std::ffi::CString;
 
-use crate::{Features, InstanceExtensions, DeviceExtensions, Gpu};
+use crate::{Features, InstanceExtensions, DeviceExtensions, Gpu, ConfigureSwapchain};
 
 use ash::vk;
 
@@ -20,6 +20,8 @@ pub enum Error {
     NotPresentableDevice,
     NoDevicesFound,
     InitializationFailed,
+    // TODO: This should probably take a ConfigureSwapchain but it proliferates its lifetime through multiple types
+    SwapchainConfigurationMissing(&'static str),
 }
 
 // impl PartialEq for Error {
@@ -31,7 +33,7 @@ pub enum Error {
 //     }
 // }
 
-impl std::fmt::Debug for Error {
+impl<'a> std::fmt::Debug for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
         match self {
             Error::ExtensionNotFound(extension_name) => {
@@ -77,6 +79,9 @@ impl std::fmt::Debug for Error {
             Error::InitializationFailed => {
                 f.write_fmt(format_args!("Failed to initialize Vulkan"))
             },
+            Error::SwapchainConfigurationMissing(config) => {
+                f.write_fmt(format_args!("ConfigureSwapchain was missing {} which is a required component", config))
+            }
         }
     }
 }
@@ -128,6 +133,9 @@ impl std::fmt::Display for Error {
             Error::InitializationFailed => {
                 f.write_fmt(format_args!("Failed to initialize Vulkan"))
             },
+            Error::SwapchainConfigurationMissing(config) => {
+                f.write_fmt(format_args!("ConfigureSwapchain was missing {} which is a required component", config))
+            }
         }
     }
 }
@@ -149,6 +157,7 @@ impl std::error::Error for Error {
             Error::NotPresentableDevice => None,
             Error::InitializationFailed => None,
             Error::NoDevicesFound => None,
+            Error::SwapchainConfigurationMissing(_) => None,
         }
     }
 }

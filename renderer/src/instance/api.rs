@@ -16,7 +16,8 @@ use std::os::raw::{c_char, c_void};
 
 use super::layers::LayerManager;
 use super::{DeviceSelector, VulkanDevice, Swapchain, ConfigureSwapchain, Surface, RenderDevice, ExtensionManager, InstanceExtensions, Layers};
-
+use crate::ConfigureDevice;
+use crate::Gpu;
 use crate::error;
 
 pub struct VulkanConfig {
@@ -50,7 +51,6 @@ impl VulkanConfig {
         let available_extensions = entry
             .enumerate_instance_extension_properties()
             .expect("Failed to load list of extensions");
-        // TODO: Store available layers here
         let available_layers = entry.enumerate_instance_layer_properties().expect("Failed to load list of layers");
         VulkanConfig {
             entry,
@@ -194,6 +194,7 @@ impl VulkanConfig {
             entry,
             .. // We no longer have any need of the available extensions
         } = self;
+        // TODO: These can be static references
         // Must be NULL or a c string
         let c_app_name = match application_name {
             Some(app_name) => CString::new(app_name).expect("Failed to create c string"),
@@ -239,7 +240,6 @@ impl VulkanConfig {
         let extensions_loaded = extensions_to_load.iter()
                                                     .map(|&ext| unsafe { CStr::from_ptr(ext) })
                                                     .collect::<HashSet<&'static CStr>>();
-        // Start device selection without creating a surface
         VulkanApi { entry, instance, extensions_loaded }
     }
 }
@@ -251,8 +251,14 @@ pub struct VulkanApi {
 }
 
 impl VulkanApi {
-    pub fn create_selector(&self, surface: &mut Surface) -> Result<DeviceSelector, error::Error> {
+    pub fn select_device(&self, surface: &mut Surface) -> Result<DeviceSelector, error::Error> {
         DeviceSelector::new(&self.instance, surface)
+    }
+
+    pub fn configure_device(&self, gpu: Gpu) -> Result<ConfigureDevice, error::Error> {
+        let Gpu {api_version, device_handle, device_features, queue_families, driver_version, vendor_id, device_id, device_name, device_type, available_extensions, surface_capabilities, surface_formats, present_modes} = gpu;
+        let config = ConfigureDevice::new(&self.instance, device_handle, queue_families, api_version, driver_version, vendor_id, device_id, device_name, device_type, available_extensions, device_features, surface_capabilities, surface_formats, present_modes);
+        Ok(config)
     }
 
     pub fn extension_loaded(&self, extension: super::InstanceExtensions) -> bool {
@@ -265,15 +271,13 @@ impl VulkanApi {
     //     self.extensions_loaded.contains(extension_name)
     // }
 
-    //
+    // TODO: Here we should recieve a Window and extract the hwnd and hinstance from there
     pub fn create_surface_win32(&self, hwnd: *const c_void, hinstance: *const c_void) -> Surface {
         Surface::new(&self.entry, &self.instance, hwnd, hinstance)
     }
 
-    pub fn configure_swapchain(&self, device: &VulkanDevice, surface: Surface) -> ConfigureSwapchain {
-        ConfigureSwapchain {
-            // Do we set format, colour space and extent for the surface here or during device configure
-        }
+    pub fn configure_swapchain<'a, 'b>(&self, device: &'a VulkanDevice, surface: Surface<'b>) -> ConfigureSwapchain<'a, 'b> {
+        ConfigureSwapchain::new(&self.instance, device, surface)
     }
 
     pub fn create_renderer(&self, device: VulkanDevice, swapchain: Swapchain) -> RenderDevice {

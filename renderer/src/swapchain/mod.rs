@@ -1,53 +1,37 @@
-mod config;
-mod device;
-mod indirect_count;
-mod extensions;
-mod queue;
-mod present;
-
-pub use indirect_count::DrawIndirectCount;
-pub use extensions::DeviceExtensions;
-pub use config::ConfigureDevice;
-use super::{QueueFamily, QueueToCreate, PciVendor, Features, Feature, ExtensionManager};
-use crate::Version;
-
 use ash::vk;
 
-use std::collections::HashMap;
+use crate::Surface;
 
-
-
-/// A fully configured device ready for use
-pub struct VulkanDevice {
-    // TODO: Extract hte relevant daa for a configured device from gpu
-    physical_device: vk::PhysicalDevice,
-    // A vector of the vulkan queues we created
-    queues: Vec<vk::Queue>,
-    device: ash::Device,
-    enabled_features: vk::PhysicalDeviceFeatures,
-    extensions_loaded: HashMap<DeviceExtensions, bool>,
-    surface_capabilities: vk::SurfaceCapabilitiesKHR,
-    surface_formats: Vec<vk::SurfaceFormatKHR>,
-    present_modes: Vec<vk::PresentModeKHR>,
-    api_version: Version,
-    driver_version: u32,
-    vendor_id: PciVendor,
-    device_id: u32,
-    device_name: [i8; ash::vk::MAX_PHYSICAL_DEVICE_NAME_SIZE],
+mod config;
+mod types;
+// TODO: Should we keep surface capabilities, we certainly need to compute a new size, we are able to just get a new surface capabilities
+pub struct Swapchain<'a> {
+    image_count: u32,
+    present_mode: vk::PresentModeKHR,
+    surface_format: vk::SurfaceFormatKHR,
+    surface: Surface<'a>,
+    swapchain_extent: vk::Extent2D,
+    image_usage: vk::ImageUsageFlags,
+    sharing_mode: vk::SharingMode,
+    swapchain: vk::SwapchainKHR,
+    clipped: bool,
+    composite_alpha: vk::CompositeAlphaFlagsKHR,
+    transform: vk::SurfaceTransformFlagsKHR,
+    previous_swapchain: Option<vk::SwapchainKHR>,
+    swapchain_ext: ash::extensions::khr::Swapchain,
+    // queue indicies and count if in Sharing Mode
 }
 
-#[derive(Debug)]
-// This class does not create any actual queues it merely gathers all the queues that the user wants to
-// create in order to hopefully optimize queue creation, in addition it performs no validation of the results
-// Meaning that if a queue could no
-pub struct QueueManager<'a> {
-    queues_to_create: Vec<QueueToCreate>,
-    family_data: &'a [QueueFamily],
-    index: usize, // Index of the next queue that is create
-}
-
-pub struct PresentModeManager<'a> {
-    modes_picked: &'a mut Vec<PresentMode>,
+pub struct ConfigureSwapchain<'a, 'b> {
+    surface_format: Option<vk::SurfaceFormatKHR>,
+    present_mode: Option<vk::PresentModeKHR>,
+    present_modes: &'a [vk::PresentModeKHR],
+    surface_formats: &'a [vk::SurfaceFormatKHR],
+    surface_capabilities: &'a vk::SurfaceCapabilitiesKHR,
+    surface: Surface<'b>,
+    swapchain_extent: Option<vk::Extent2D>,
+    image_count: Option<u32>,
+    swapchain_ext: ash::extensions::khr::Swapchain,
 }
 
 pub enum PresentMode {
@@ -60,12 +44,12 @@ pub enum PresentMode {
     /// available for re-use by the application. One request is removed from the queue and processed during each vertical blanking period in which 
     /// the queue is non-empty.
     Mailbox,
-    /// VK_PRESENT_MODE_FIFO_KHR specifies that the presentation engine waits for the next vertical blanking period to update the current image.
+    /// Fifo specifies that the presentation engine waits for the next vertical blanking period to update the current image.
     /// Tearing cannot be observed. An internal queue is used to hold pending presentation requests. New requests are appended to the end of the queue,
     /// and one request is removed from the beginning of the queue and processed during each vertical blanking period in which the queue is non-empty.
     /// This is the only value of presentMode that is required to be supported.
     Fifo,
-    /// VK_PRESENT_MODE_FIFO_RELAXED_KHR specifies that the presentation engine generally waits for the next vertical blanking period to update the
+    /// FifoRelaxed specifies that the presentation engine generally waits for the next vertical blanking period to update the
     /// current image. If a vertical blanking period has already passed since the last update of the current image then the presentation engine does
     /// not wait for another vertical blanking period for the update, meaning this mode may result in visible tearing in this case. This mode is useful
     /// for reducing visual stutter with an application that will mostly present a new image before the next vertical blanking period, but may occasionally
@@ -84,4 +68,58 @@ pub enum PresentMode {
     /// requests. The application can indicate the image contents have been updated by making a presentation request, but this does not guarantee the timing of
     /// when it will be updated. This mode may result in visible tearing if rendering to the image is not timed correctly.
     SharedContinuousRefresh,
+}
+
+pub enum SurfaceFormat {
+    B8G8R8A8UNorm,
+    B8G8R8A8SRGB,
+    R8G8B8A8UNorm,
+    R8G8B8A8SRGB,
+    R5G6B5UNormPack16,
+}
+
+pub enum SurfaceColourSpace {
+    SRGBNonlinear
+}
+
+pub struct SwapchainExtent {
+    min: vk::Extent2D,
+    max: vk::Extent2D,
+    width: u32,
+    height: u32,
+}
+
+// Choosing a swapchain extent is capabilities.currentExtent is 32 MAX then we can pick our own
+// Otherwise we need to simply return capabilities.currentExtent
+
+impl SwapchainExtent {
+    pub fn new(min_extent: &vk::Extent2D, max_extent: &vk::Extent2D) -> SwapchainExtent {
+        SwapchainExtent {
+            min: *min_extent,
+            max: *max_extent,
+            height: 0,
+            width: 0,
+        }
+    }
+
+    pub fn min_width(&self) -> u32 {
+        self.min.width
+    }
+
+    pub fn min_height(&self) -> u32 {
+        self.min.height
+    }
+
+    pub fn max_height(&self) -> u32 {
+        self.max.height
+    }
+
+    pub fn max_width(&self) -> u32 {
+        self.max.width
+    }
+
+    pub fn set_extent(&mut self, width: u32, height: u32) {
+        self.width = width;
+        self.height = height;
+    }
 }

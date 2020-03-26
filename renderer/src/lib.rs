@@ -1,7 +1,9 @@
 mod instance;
 mod error;
 mod pick;
+mod gpu;
 mod version;
+mod config;
 mod device;
 mod extensions;
 mod features;
@@ -12,6 +14,8 @@ mod vendor;
 mod render;
 mod swapchain;
 
+use ash::vk;
+
 pub use crate::error::Error;
 pub use pick::PickManager;
 pub use version::Version;
@@ -19,64 +23,43 @@ pub use instance::VulkanApi;
 pub use instance::VulkanConfig;
 pub use extensions::ExtensionManager;
 pub use instance::InstanceExtensions;
-pub use device::DeviceExtensions;
 pub use instance::Layers;
 pub use features::{Features, Feature};
 
 pub use queues::{QueueFamily, QueueToCreate};
-pub use select::{DeviceSelector, DeviceFilter, FiltersDevices, Gpu};
+pub use select::{DeviceSelector, DeviceFilter, FiltersDevices};
 pub use surface::Surface;
 pub use vendor::PciVendor;
 pub use render::RenderDevice;
-pub use device::{VulkanDevice, ConfigureDevice, PresentMode};
-pub use swapchain::{Swapchain, ConfigureSwapchain};
+pub use device::VulkanDevice;
+pub use config::{ConfigureDevice, DeviceExtensions};
+pub use swapchain::{Swapchain, ConfigureSwapchain, PresentMode, SurfaceFormat, SurfaceColourSpace};
 
-#[cfg(test)]
-pub use select::TestGpuBuilder;
+// Must be clonable so that errors can access a list of Gpu's
+#[derive(Clone)]
+pub struct Gpu {
+    device_handle: vk::PhysicalDevice,
+    queue_families: Vec<QueueFamily>,
+    api_version: u32,
+    driver_version: u32,
+    vendor_id: PciVendor,
+    device_id: u32,
+    device_name: [i8; ash::vk::MAX_PHYSICAL_DEVICE_NAME_SIZE],
+    device_type: vk::PhysicalDeviceType,
+    available_extensions: Vec<vk::ExtensionProperties>,
+    device_features: vk::PhysicalDeviceFeatures,
+    surface_capabilities: vk::SurfaceCapabilitiesKHR,
+    surface_formats: Vec<vk::SurfaceFormatKHR>,
+    present_modes: Vec<vk::PresentModeKHR>,
+    // pipelinecacheID,
+    // limits,
+    // sparse_properties,
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use winit;
-    #[test]
-    fn test_api_config() {
-        //entry.try_enumerate_instance_version();
-        let vulkan_api = VulkanConfig::new()
-            .api_version(1, 0, 0)
-            .application_name("ArtRef")
-            .engine_name("RefRenderer")
-            .engine_version(1, 0, 0)
-            .application_version(1, 0, 0)
-            .required_extensions(|mng| {
-                mng.add_extension(InstanceExtensions::Surface);
-                mng.add_extension(InstanceExtensions::Win32Surface);
-            }).expect("Failed to load required instance extensions")
-            .optional_extensions(|mng| {
-                mng.add_extension(InstanceExtensions::DebugUtils);
-            })
-            .with_layers(|mng| {
-                mng.add_layer(Layers::KhronosValidation);
-            })
-            .init();
-        use winit::platform::windows::EventLoopExtWindows;
-        use winit::platform::windows::WindowExtWindows;
-        // let event_loop = winit::platform::windows::EventLoopExtWindows::new_any_thread();
-        let event_loop = winit::event_loop::EventLoop::<()>::new_any_thread();
-        let window = winit::window::Window::new(&event_loop).expect("Failed to create window");
-        let hwnd = window.hwnd();
-        let hinstance = window.hinstance();
-        let mut surface = vulkan_api.create_surface_win32(hwnd, hinstance);
-        let mut selector = vulkan_api.create_selector(&mut surface).expect("Test Selector");
-        let mut config = selector.required_device_extensions(|mng| {
-                mng.add_extension(DeviceExtensions::Swapchain);
-            }).expect("Required Device Extensions Missing")
-            .select_device();
-        let device = config.extensions_to_load(|mng| {
-            mng.add_extension(DeviceExtensions::Swapchain);
-        });
-        println!("{:?}", device);
-        // TODO: Test something
-    }
 
     #[test]
     fn test_device_selection() {}

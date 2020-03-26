@@ -1,10 +1,8 @@
-use crate::{QueueFamily, Features, Feature, PciVendor, DeviceExtensions};
-use super::Gpu;
+use crate::{QueueFamily, Features, PciVendor, DeviceExtensions, Gpu};
 
 use ash::vk;
 
-use std::ffi::{CStr};
-use std::os::raw::c_char;
+use std::ffi::CStr;
 
 // Represents a Gpu available on the local system
 // We derive clone for when we are returning an error
@@ -154,82 +152,3 @@ impl std::fmt::Display for Gpu {
         }))
     }
 }
-
-impl std::convert::AsRef<Gpu> for Gpu {
-    fn as_ref(&self) -> &Gpu {
-        &self
-    }
-}
-
-#[cfg(test)]
-// This needs to be outside the test module so that other test modules can import it
-pub struct TestGpuBuilder {
-        vendor: Option<PciVendor>,
-        device_type: Option<vk::PhysicalDeviceType>,
-        queues: Vec<QueueFamily>,
-        // device_name: Option<&'a str>,
-        device_name: Option<[i8; vk::MAX_PHYSICAL_DEVICE_NAME_SIZE]>,
-    }
-
-    #[cfg(test)]
-    impl TestGpuBuilder {
-        pub fn new() -> TestGpuBuilder {
-            TestGpuBuilder {
-                vendor: None,
-                device_type: None,
-                queues: Vec::default(),
-                device_name: None,
-            }
-        }
-
-        pub fn pick_vendor(mut self, vendor: PciVendor) -> Self {
-            self.vendor = Some(vendor);
-            self
-        }
-
-        pub fn pick_device_type(mut self, device_type: vk::PhysicalDeviceType) -> Self {
-            self.device_type = Some(device_type);
-            self
-        }
-
-        pub fn pick_device_name(mut self, device_name: &str) -> Self {
-            let mut device_name_array: [i8; vk::MAX_PHYSICAL_DEVICE_NAME_SIZE] = [0; vk::MAX_PHYSICAL_DEVICE_NAME_SIZE];
-            assert!(device_name_array.len() < vk::MAX_PHYSICAL_DEVICE_NAME_SIZE);
-            for (i, letter) in device_name.as_bytes().iter().enumerate() {
-                device_name_array[i] = *letter as i8;
-            }
-            self.device_name = Some(device_name_array);
-            self
-        }
-
-        pub fn add_queue(mut self, operations_supported: vk::QueueFlags, slots_available: u32, presentable: bool) -> Self {
-            let test_family = QueueFamily::create_test_family(self.queues.len(), operations_supported, slots_available, presentable);
-            self.queues.push(test_family);
-            self
-        }
-
-        pub fn create_device(self) -> Gpu {
-            
-            Gpu {
-                api_version: 0,
-                device_id: 0,
-                vendor_id: self.vendor.unwrap_or(Default::default()),
-                device_type: self.device_type.unwrap_or(Default::default()),
-                driver_version: 0,
-                device_name: self.device_name.unwrap_or_else(|| {
-                    let mut default_device_name: [i8; vk::MAX_PHYSICAL_DEVICE_NAME_SIZE] = [0; vk::MAX_PHYSICAL_DEVICE_NAME_SIZE];
-                    for (i, letter) in b"Default Test Device\0".into_iter().enumerate() {
-                        default_device_name[i] = *letter as i8;
-                    }
-                    default_device_name
-                }),
-                queue_families: self.queues,
-                device_handle: vk::PhysicalDevice::default(),
-                available_extensions: Vec::default(),
-                device_features: vk::PhysicalDeviceFeatures::default(),
-                surface_formats: Default::default(),
-                surface_capabilities: vk::SurfaceCapabilitiesKHR::default(),
-                present_modes: Vec::default(),
-            }
-        }
-    }
