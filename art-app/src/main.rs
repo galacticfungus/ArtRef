@@ -87,5 +87,6 @@ fn main() {
     // Create swapchain
     let renderer = vulkan_api.create_renderer(device, swapchain);
     // Create the windowand surface, create the swap chain
+    //renderer.create_pipeline()
     window.init_events();
 }

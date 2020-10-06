@@ -107,7 +107,6 @@ impl<'a, 'b> ConfigureSwapchain<'a, 'b> {
             .. Default::default()
         };
         let internal_swapchain = unsafe { self.swapchain_ext.create_swapchain(&create_info, None) }?;
-
         let swapchain = Swapchain {
             image_count: self.image_count.unwrap(),
             present_mode: self.present_mode.unwrap(),
