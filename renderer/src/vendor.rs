@@ -1,4 +1,4 @@
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum PciVendor {
     NVidia, // 0x10DE
     AMD,    // 0x1002
@@ -8,7 +8,7 @@ pub enum PciVendor {
     Default,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum KhronosVendor {
     Vivante,
     VeriSilicon,

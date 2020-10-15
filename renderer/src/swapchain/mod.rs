@@ -1,39 +1,42 @@
-use ash::vk;
-
+use erupt::vk1_0 as vk;
+use erupt::extensions::khr_surface as surface;
+use erupt::extensions::khr_swapchain;
 use crate::Surface;
-
+use crate::device;
 mod config;
 mod types;
+mod swapchain;
 // TODO: Should we keep surface capabilities, we certainly need to compute a new size, we are able to just get a new surface capabilities
+#[derive(Debug)]
 pub struct Swapchain<'a> {
     image_count: u32,
-    present_mode: vk::PresentModeKHR,
-    surface_format: vk::SurfaceFormatKHR,
+    present_mode: surface::PresentModeKHR,
+    surface_format: surface::SurfaceFormatKHR,
     surface: Surface<'a>,
     swapchain_extent: vk::Extent2D,
     image_usage: vk::ImageUsageFlags,
     sharing_mode: vk::SharingMode,
-    swapchain: vk::SwapchainKHR,
+    swapchain: khr_swapchain::SwapchainKHR,
     clipped: bool,
-    composite_alpha: vk::CompositeAlphaFlagsKHR,
-    transform: vk::SurfaceTransformFlagsKHR,
-    previous_swapchain: Option<vk::SwapchainKHR>,
-    swapchain_ext: ash::extensions::khr::Swapchain,
+    composite_alpha: surface::CompositeAlphaFlagsKHR,
+    transform: surface::SurfaceTransformFlagBitsKHR,
+    previous_swapchain: Option<khr_swapchain::SwapchainKHR>,
+    images: Vec<vk::Image>
     // queue indicies and count if in Sharing Mode
 }
 
 pub struct ConfigureSwapchain<'a, 'b> {
-    surface_format: Option<vk::SurfaceFormatKHR>,
-    present_mode: Option<vk::PresentModeKHR>,
-    present_modes: &'a [vk::PresentModeKHR],
-    surface_formats: &'a [vk::SurfaceFormatKHR],
-    surface_capabilities: &'a vk::SurfaceCapabilitiesKHR,
+    surface_format: Option<surface::SurfaceFormatKHR>,
+    present_mode: Option<surface::PresentModeKHR>,
+    present_modes: &'a [surface::PresentModeKHR],
+    surface_formats: &'a [surface::SurfaceFormatKHR],
+    surface_capabilities: &'a surface::SurfaceCapabilitiesKHR,
     surface: Surface<'b>,
     swapchain_extent: Option<vk::Extent2D>,
     image_count: Option<u32>,
-    swapchain_ext: ash::extensions::khr::Swapchain,
+    device: &'a device::VulkanDevice
 }
-
+#[derive(Debug)]
 pub enum PresentMode {
     /// Specifies that the presentation engine does not wait for a vertical blanking period to update the current image, meaning 
     /// this mode may result in visible tearing. No internal queuing of presentation requests is needed, as the requests are applied immediately.
@@ -69,7 +72,7 @@ pub enum PresentMode {
     /// when it will be updated. This mode may result in visible tearing if rendering to the image is not timed correctly.
     SharedContinuousRefresh,
 }
-
+#[derive(Debug)]
 pub enum SurfaceFormat {
     B8G8R8A8UNorm,
     B8G8R8A8SRGB,
@@ -77,11 +80,11 @@ pub enum SurfaceFormat {
     R8G8B8A8SRGB,
     R5G6B5UNormPack16,
 }
-
+#[derive(Debug)]
 pub enum SurfaceColourSpace {
     SRGBNonlinear
 }
-
+#[derive(Debug)]
 pub struct SwapchainExtent {
     min: vk::Extent2D,
     max: vk::Extent2D,

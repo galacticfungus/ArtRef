@@ -1,6 +1,6 @@
 use std::ffi::c_void;
-
-use ash::vk;
+use erupt::extensions::khr_surface as surface;
+use erupt::extensions::khr_win32_surface as win32_surface;
 
 use crate::error;
 
@@ -9,32 +9,38 @@ use crate::error;
 // TODO: This object is also responsible for recreating the surface if the surface is lost for some reason
 
 #[cfg(target_os = "windows")]
+#[derive(Debug)]
 pub struct Surface<'a> {
-    pub(super) entry: &'a ash::Entry,
-    pub(super) instance: &'a ash::Instance,
+    pub(super) entry: &'a erupt::DefaultEntryLoader,
+    pub(super) instance: &'a erupt::InstanceLoader,
     // This is the Surface used by Vulkan
-    pub(crate) platform_surface: vk::SurfaceKHR,
-    pub(super) surface_extension: ash::extensions::khr::Surface,
-    pub(super) hwnd: *const c_void,
-    pub(super) hinstance: *const c_void,
+    pub(crate) platform_surface: erupt::extensions::khr_surface::SurfaceKHR,
+    pub(super) hwnd: *mut std::ffi::c_void,
+    pub(super) hinstance: *mut std::ffi::c_void,
 }
 
 #[cfg(target_os = "windows")]
 impl<'a> Surface<'a> {
-    pub(crate) fn new(entry: &'a ash::Entry, instance: &'a ash::Instance, hwnd: *const c_void, hinstance: *const c_void) -> Surface<'a> {
-        let platform_extension =
-            ash::extensions::khr::Win32Surface::new(entry, instance);
-        let create_info = vk::Win32SurfaceCreateInfoKHR {
+    pub(crate) fn new(entry: &'a erupt::DefaultEntryLoader, instance: &'a erupt::InstanceLoader, window: &winit::window::Window) -> Surface<'a> {
+        // let f = handle as &dyn HasRawWindowHandle;
+        use winit::platform::windows::WindowExtWindows;
+        let hinstance = window.hinstance();
+        let hwnd = window.hwnd();
+        
+        use erupt::extensions::khr_win32_surface;
+
+        let create_info = khr_win32_surface::Win32SurfaceCreateInfoKHR {
             hinstance,
             hwnd,
             ..Default::default()
         };
-        let platform_surface = unsafe { platform_extension.create_win32_surface(&create_info, None) }.expect("Failed to create win32 surface");
-        let surface_extension = ash::extensions::khr::Surface::new(entry, instance);
+
+        let platform_surface = unsafe {instance.create_win32_surface_khr(&create_info, None, None)}
+            .expect("Failed to create windows surface");
+
         Surface {
             entry,
             instance,
-            surface_extension,
             platform_surface,
             hwnd,
             hinstance,
@@ -42,26 +48,24 @@ impl<'a> Surface<'a> {
     }
 
     pub fn recreate_surface(&mut self) -> Result<(), error::Error> {
-        let platform_extension =
-            ash::extensions::khr::Win32Surface::new(self.entry, self.instance);
-        let create_info = vk::Win32SurfaceCreateInfoKHR {
+        
+        use erupt::extensions::khr_win32_surface;
+        let create_info = khr_win32_surface::Win32SurfaceCreateInfoKHR {
             hinstance: self.hinstance,
             hwnd: self.hwnd,
             ..Default::default()
         };
-        let platform_surface = unsafe { platform_extension.create_win32_surface(&create_info, None) };
-        match platform_surface {
-            Ok(platform_surface) => {
-                self.platform_surface = platform_surface
-            },
-            Err(error) => return Err(error::Error::VulkanApiError(error)),
-        }
+
+        let platform_surface = unsafe {self.instance.create_win32_surface_khr(&create_info, None, None)}
+            .expect("Failed to create windows surface");
+        self.platform_surface = platform_surface;
         Ok(())
     }
 }
 
 impl<'a> Drop for Surface<'a> {
     fn drop(&mut self) {
-        unsafe { self.surface_extension.destroy_surface(self.platform_surface, None) };
+        println!("Surface is being dropped");
+        unsafe { self.instance.destroy_surface_khr(Some(self.platform_surface), None) };
     }
 }

@@ -2,8 +2,6 @@ use std::ffi::CString;
 
 use crate::{Features, InstanceExtensions, DeviceExtensions, Gpu, ConfigureSwapchain};
 
-use ash::vk;
-
 pub enum Error {
     ExtensionNotFound(CString),
     LayerNotFound(CString),
@@ -14,7 +12,7 @@ pub enum Error {
     MissingFeature(Features),
     NoValidQueueFamily,
     // Represents an error returned by the Vulkan API
-    VulkanApiError(vk::Result),
+    VulkanApiError(erupt::vk1_0::Result),
     FailedToRecreateSurface,
     NoDevicesCanPresent,
     NotPresentableDevice,
@@ -162,11 +160,12 @@ impl std::error::Error for Error {
     }
 }
 
-impl From<vk::Result> for Error {
-    fn from(result: vk::Result) -> Self {
-        match result {
-            vk::Result::ERROR_INITIALIZATION_FAILED => Error::InitializationFailed,
-            error => Error::VulkanApiError(error),
+impl From<erupt::utils::VulkanResult<()>> for Error {
+    fn from(result: erupt::utils::VulkanResult<()>) -> Self {
+        match result.result() {
+            Err(erupt::vk1_0::Result::ERROR_INITIALIZATION_FAILED) => Error::InitializationFailed,
+            Err(error) => Error::VulkanApiError(error),
+            Ok(_) => panic!("We only map errors here"),
         }
     }
 }

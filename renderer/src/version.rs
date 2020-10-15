@@ -25,7 +25,7 @@ impl std::fmt::Debug for Version {
 impl Default for Version {
     fn default() -> Self {
         Version {
-            version: ash::vk_make_version!(1, 0, 0),
+            version: erupt::vk1_0::make_version(1, 0, 0),
         }
     }
 }

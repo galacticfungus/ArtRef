@@ -2,13 +2,13 @@ use super::{DeviceSelector, Gpu, DeviceFilter};
 use crate::error;
 use crate::{QueueFamily, Surface, PciVendor, ConfigureDevice};
 
-use ash::version::InstanceV1_0;
-use ash::vk;
+use erupt::vk1_0 as vk;
+use erupt::extensions::khr_surface as surface;
 
 impl<'a> DeviceSelector<'a> {
-    fn get_device_queues(instance: &ash::Instance, physical_device: vk::PhysicalDevice, surface: &mut Surface) -> (bool, Vec<QueueFamily>) {
+    fn get_device_queues(instance: &erupt::InstanceLoader, physical_device: vk::PhysicalDevice, surface: &mut Surface) -> (bool, Vec<QueueFamily>) {
         let queue_families =
-            unsafe { instance.get_physical_device_queue_family_properties(physical_device) };
+            unsafe { instance.get_physical_device_queue_family_properties(physical_device, None) };
         let device_queues: Vec<_> = queue_families.into_iter()
             .enumerate()
             .map(|(index, fam)| {
@@ -21,31 +21,31 @@ impl<'a> DeviceSelector<'a> {
         (gpu_presentable, device_queues)
     }
     
-    fn get_surface_properties(physical_device: vk::PhysicalDevice, surface: &mut Surface) -> Result<(vk::SurfaceCapabilitiesKHR, Vec<vk::SurfaceFormatKHR>, Vec<vk::PresentModeKHR>), error::Error> {
+    fn get_surface_properties(physical_device: erupt::vk1_0::PhysicalDevice, surface: &mut Surface) -> Result<(surface::SurfaceCapabilitiesKHR, Vec<surface::SurfaceFormatKHR>, Vec<surface::PresentModeKHR>), error::Error> {
         // Get surface characteristics
         let surface_capabilities = surface.get_surface_capabilities(physical_device)?;
         let surface_formats = surface.get_surface_formats(physical_device)?;
         let presentation_modes = surface.get_surface_presentation_modes(physical_device)?;
 
         // TODO: return a bunch of surface capabilities
-        // Should this return a struct with all these items boxed
+        // TODO: Should this return a struct with all these items boxed
         return Ok((surface_capabilities, surface_formats, presentation_modes));
         
     }
 
-    pub fn get_device_properties(instance: &'a ash::Instance, physical_device: vk::PhysicalDevice, surface: &mut Surface) -> Result<Gpu, error::Error> {
+    pub fn get_device_properties(instance: &'a erupt::InstanceLoader, physical_device: vk::PhysicalDevice, surface: &mut Surface) -> Result<Gpu, error::Error> {
         // TODO: Do we auto filter GPU's that can't present to our surface
         let (presentable, device_queues) = Self::get_device_queues(instance, physical_device, surface);
         if presentable == false {
             return Err(error::Error::NotPresentableDevice)
         }
         let device_properties =
-            unsafe { instance.get_physical_device_properties(physical_device) };
+            unsafe { instance.get_physical_device_properties(physical_device, None) };
 
         let available_extensions =
-            unsafe { instance.enumerate_device_extension_properties(physical_device) }
+            unsafe { instance.enumerate_device_extension_properties(physical_device, None, None) }
                 .expect("Failed to get device extensions");
-        let device_features = unsafe { instance.get_physical_device_features(physical_device) };
+        let device_features = unsafe { instance.get_physical_device_features(physical_device, None) };
         
         let (surface_capabilities, surface_formats, present_modes) = Self::get_surface_properties(physical_device, surface)?;
         
@@ -64,14 +64,15 @@ impl<'a> DeviceSelector<'a> {
     }
 
     // TODO: This may need to return a result since a selector can fail to be created if device extensions fails
-    pub fn new(instance: &'a ash::Instance, surface: &mut Surface) -> Result<Self, error::Error> {
+    pub fn new(instance: &'a erupt::InstanceLoader, surface: &mut Surface) -> Result<Self, error::Error> {
         let devices = unsafe {
             instance
-                .enumerate_physical_devices()?};
+                .enumerate_physical_devices(None)}.expect("Failed to get list of possible devices");
                 // Can fail with
                 // VK_ERROR_INITIALIZATION_FAILED
                 // VK_ERROR_OUT_OF_HOST_MEMORY
                 // VK_ERROR_OUT_OF_DEVICE_MEMORY
+            
         if devices.is_empty() {
             return Err(error::Error::NoDevicesFound);
         }

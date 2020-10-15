@@ -1,5 +1,4 @@
 use std::ffi::CStr;
-
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub enum DeviceExtensions {
     Swapchain,
@@ -8,9 +7,10 @@ pub enum DeviceExtensions {
 
 impl DeviceExtensions {
     pub fn get_name(&self) -> &'static CStr {
+        // SAFE: These are defined as static c strings and their type set to const * c_char, so it's safe to cast to CStr
         match self {
-            Self::Swapchain => ash::extensions::khr::Swapchain::name(),
-            Self::IndirectCount => super::DrawIndirectCount::name(),
+            Self::Swapchain => unsafe {CStr::from_ptr(erupt::extensions::khr_swapchain::KHR_SWAPCHAIN_EXTENSION_NAME)},
+            Self::IndirectCount => unsafe {CStr::from_ptr(erupt::extensions::khr_draw_indirect_count::KHR_DRAW_INDIRECT_COUNT_EXTENSION_NAME)},
         }
     }
 }

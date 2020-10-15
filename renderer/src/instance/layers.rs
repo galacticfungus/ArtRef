@@ -1,9 +1,7 @@
-use ash::version::EntryV1_0;
-
 use std::ffi::CStr;
 use std::collections::HashMap;
 
-
+use erupt::extensions;
 
 
 #[feature(const_str_as_bytes)]
@@ -39,9 +37,9 @@ pub struct LayerManager {
 }
 
 impl LayerManager {
-    pub fn new(entry: &ash::Entry) -> LayerManager {
-        let layers = entry
-            .enumerate_instance_layer_properties()
+    pub fn new(entry: &erupt::DefaultEntryLoader) -> LayerManager {
+        let layers = unsafe {entry
+            .enumerate_instance_layer_properties(None) }
             .expect("Failed to get list of layers");
         let mut available_layers = Vec::with_capacity(layers.len());
         for layer in layers {
@@ -65,12 +63,16 @@ impl LayerManager {
 #[derive(PartialEq, Eq, Hash)]
 pub enum Layers {
     KhronosValidation,
+    NvNsight,
+    NvOptimus,
 }
 
 impl Layers {
     pub fn get_name(&self) -> &'static CStr {
         match self {
             Self::KhronosValidation => KhronosValidation::name(),
+            Self::NvNsight => NvNsight::name(),
+            Self::NvOptimus => NvOptimus::name(),
         }
     }
 }

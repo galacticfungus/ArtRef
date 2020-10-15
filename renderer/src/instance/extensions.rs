@@ -14,9 +14,9 @@ pub enum InstanceExtensions {
 impl InstanceExtensions {
     pub fn get_name(&self) -> &'static CStr {
         match self {
-            Self::Surface => ash::extensions::khr::Surface::name(),
-            Self::Win32Surface => ash::extensions::khr::Win32Surface::name(),
-            Self::DebugUtils => ash::extensions::ext::DebugUtils::name(),
+            Self::Surface => unsafe {CStr::from_ptr(erupt::extensions::khr_surface::KHR_SURFACE_EXTENSION_NAME)},
+            Self::Win32Surface => unsafe {CStr::from_ptr(erupt::extensions::khr_win32_surface::KHR_WIN32_SURFACE_EXTENSION_NAME)},
+            Self::DebugUtils => unsafe {CStr::from_ptr(erupt::extensions::ext_debug_utils::EXT_DEBUG_UTILS_EXTENSION_NAME)},
         }
     }
 }

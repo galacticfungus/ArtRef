@@ -1,51 +1,52 @@
-use ash::vk;
+use erupt::vk1_0 as vk;
+use erupt::extensions::khr_surface as surface;
 
 use super::{PresentMode, SurfaceFormat, SurfaceColourSpace};
 
-impl std::convert::From<ash::vk::PresentModeKHR> for PresentMode {
-    fn from(present_mode: vk::PresentModeKHR) -> Self {
+impl std::convert::From<surface::PresentModeKHR> for PresentMode {
+    fn from(present_mode: surface::PresentModeKHR) -> Self {
         match present_mode {
-            vk::PresentModeKHR::IMMEDIATE => PresentMode::Immediate,
-            vk::PresentModeKHR::MAILBOX => PresentMode::Mailbox,
-            vk::PresentModeKHR::FIFO => PresentMode::Fifo,
-            vk::PresentModeKHR::FIFO_RELAXED => PresentMode::FifoRelaxed,
-            vk::PresentModeKHR::SHARED_DEMAND_REFRESH => PresentMode::SharedDemandRefresh,
-            vk::PresentModeKHR::SHARED_CONTINUOUS_REFRESH => PresentMode::SharedContinuousRefresh,
+            surface::PresentModeKHR::IMMEDIATE_KHR => PresentMode::Immediate,
+            surface::PresentModeKHR::MAILBOX_KHR => PresentMode::Mailbox,
+            surface::PresentModeKHR::FIFO_KHR => PresentMode::Fifo,
+            surface::PresentModeKHR::FIFO_RELAXED_KHR => PresentMode::FifoRelaxed,
+            surface::PresentModeKHR::SHARED_DEMAND_REFRESH_KHR => PresentMode::SharedDemandRefresh,
+            surface::PresentModeKHR::SHARED_CONTINUOUS_REFRESH_KHR => PresentMode::SharedContinuousRefresh,
             _ => unreachable!("Unknown present mode found when converting a PresentModeKHR"),
         }
     }
 }
 
-impl std::convert::From<&PresentMode> for ash::vk::PresentModeKHR {
+impl std::convert::From<&PresentMode> for erupt::extensions::khr_surface::PresentModeKHR {
     fn from(present_mode: &PresentMode) -> Self {
         match present_mode {
-            PresentMode::Immediate => vk::PresentModeKHR::IMMEDIATE,
-            PresentMode::Mailbox => vk::PresentModeKHR::MAILBOX,
-            PresentMode::Fifo => vk::PresentModeKHR::FIFO,
-            PresentMode::FifoRelaxed => vk::PresentModeKHR::FIFO_RELAXED,
-            PresentMode::SharedDemandRefresh => vk::PresentModeKHR::SHARED_DEMAND_REFRESH,
-            PresentMode::SharedContinuousRefresh => vk::PresentModeKHR::SHARED_CONTINUOUS_REFRESH,
+            PresentMode::Immediate => surface::PresentModeKHR::IMMEDIATE_KHR,
+            PresentMode::Mailbox => surface::PresentModeKHR::MAILBOX_KHR,
+            PresentMode::Fifo => surface::PresentModeKHR::FIFO_KHR,
+            PresentMode::FifoRelaxed => surface::PresentModeKHR::FIFO_RELAXED_KHR,
+            PresentMode::SharedDemandRefresh => surface::PresentModeKHR::SHARED_DEMAND_REFRESH_KHR,
+            PresentMode::SharedContinuousRefresh => surface::PresentModeKHR::SHARED_CONTINUOUS_REFRESH_KHR,
         }
     }
 }
 
-impl From<&SurfaceFormat> for vk::Format {
-    fn from(format: &SurfaceFormat) -> vk::Format {
+impl From<&SurfaceFormat> for erupt::vk1_0::Format {
+    fn from(format: &SurfaceFormat) -> erupt::vk1_0::Format {
         match format {
-            SurfaceFormat::B8G8R8A8UNorm => vk::Format::B8G8R8_UNORM,
-            SurfaceFormat::B8G8R8A8SRGB => vk::Format::B8G8R8_SRGB,
-            SurfaceFormat::R8G8B8A8UNorm => vk::Format::R8G8B8_UNORM,
-            SurfaceFormat::R8G8B8A8SRGB => vk::Format::R8G8B8_SRGB,
-            SurfaceFormat::R5G6B5UNormPack16 => vk::Format::R5G6B5_UNORM_PACK16,
+            SurfaceFormat::B8G8R8A8UNorm => erupt::vk1_0::Format::B8G8R8A8_UNORM,
+            SurfaceFormat::B8G8R8A8SRGB => erupt::vk1_0::Format::B8G8R8A8_SRGB,
+            SurfaceFormat::R8G8B8A8UNorm => erupt::vk1_0::Format::R8G8B8A8_UNORM,
+            SurfaceFormat::R8G8B8A8SRGB => erupt::vk1_0::Format::R8G8B8A8_SRGB,
+            SurfaceFormat::R5G6B5UNormPack16 => erupt::vk1_0::Format::R5G6B5_UNORM_PACK16,
         }
     }
 }
 
-impl From<&SurfaceColourSpace> for vk::ColorSpaceKHR {
+impl From<&SurfaceColourSpace> for surface::ColorSpaceKHR {
     
-    fn from(colour_space: &SurfaceColourSpace) -> vk::ColorSpaceKHR {
+    fn from(colour_space: &SurfaceColourSpace) -> surface::ColorSpaceKHR {
         match colour_space {
-             SurfaceColourSpace::SRGBNonlinear => vk::ColorSpaceKHR::SRGB_NONLINEAR,
+             SurfaceColourSpace::SRGBNonlinear => surface::ColorSpaceKHR::SRGB_NONLINEAR_KHR,
         }
     }
 }

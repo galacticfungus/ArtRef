@@ -1,7 +1,6 @@
 use crate::{QueueFamily, Features, PciVendor, DeviceExtensions, Gpu};
-
-use ash::vk;
-
+use erupt::vk1_0 as vk;
+use erupt::extensions::khr_surface as surface;
 use std::ffi::CStr;
 
 // Represents a Gpu available on the local system
@@ -15,9 +14,9 @@ impl Gpu {
         device_queues: Vec<QueueFamily>,
         available_extensions: Vec<vk::ExtensionProperties>,
         device_features: vk::PhysicalDeviceFeatures,
-        surface_capabilities: vk::SurfaceCapabilitiesKHR,
-        surface_formats: Vec<vk::SurfaceFormatKHR>,
-        present_modes: Vec<vk::PresentModeKHR>,
+        surface_capabilities: surface::SurfaceCapabilitiesKHR,
+        surface_formats: Vec<surface::SurfaceFormatKHR>,
+        present_modes: Vec<surface::PresentModeKHR>,
     ) -> Self {
         Gpu {
             device_handle: physical_device,

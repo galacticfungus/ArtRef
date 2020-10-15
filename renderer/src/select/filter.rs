@@ -2,9 +2,9 @@ use super::{DeviceFilter, SupportDeviceFiltering, Gpu, DeviceSelector, FiltersDe
 use crate::{ExtensionManager, Features};
 use crate::error;
 
-use std::ffi::CStr;
+use erupt::vk1_0 as vk;
 
-use ash::vk;
+use std::ffi::CStr;
 
 impl DeviceFilter {
     pub fn new(devices_to_filter: Vec<Gpu>) -> DeviceFilter {

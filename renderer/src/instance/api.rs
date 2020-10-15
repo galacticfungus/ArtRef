@@ -1,7 +1,10 @@
-use ash::version::{EntryV1_0};
-use ash::vk;
-use ash::vk_make_version;
+// use ash::version::{EntryV1_0};
+// use ash::vk;
+// use ash::vk_make_version;
 
+use erupt::vk1_0 as vk;
+use erupt::vk1_0::make_version as make_version;
+use raw_window_handle::HasRawWindowHandle;
 // use winit::{
 //     dpi::{LogicalPosition, LogicalSize},
 //     event::{Event, KeyboardInput, ScanCode, WindowEvent},
@@ -21,7 +24,7 @@ use crate::Gpu;
 use crate::error;
 
 pub struct VulkanConfig {
-    entry: ash::Entry,
+    entry: erupt::DefaultEntryLoader,
     api_version: u32,
     engine_version: u32,
     application_version: u32,
@@ -35,7 +38,7 @@ pub struct VulkanConfig {
 
 impl VulkanConfig {
     pub fn new() -> Self {
-        let entry = ash::Entry::new().expect("Failed to load Vulkan");
+        let entry = erupt::EntryLoader::new().expect("Failed to load Vulkan");
         // Remember instance version differs from device version
         // let entry = Entry::new()?;
         // match entry.try_enumerate_instance_version()? {
@@ -48,17 +51,20 @@ impl VulkanConfig {
         // Vulkan 1.0
         //     None => {},
         // }
-        let available_extensions = entry
-            .enumerate_instance_extension_properties()
+        
+        let available_extensions = unsafe {entry
+            .enumerate_instance_extension_properties(None, None) }
             .expect("Failed to load list of extensions");
-        let available_layers = entry.enumerate_instance_layer_properties().expect("Failed to load list of layers");
+
+        let available_layers = unsafe { entry.enumerate_instance_layer_properties(None) }.expect("Failed to load list of layers");
+        
         VulkanConfig {
             entry,
             application_name: None,
             engine_name: None,
             engine_version: 0,
             application_version: 0,
-            api_version: vk_make_version!(1, 0, 0),
+            api_version: make_version(1, 0, 0),
             requested_extensions: HashMap::new(),
             available_extensions,
             layers_to_load: HashMap::new(),
@@ -77,17 +83,17 @@ impl VulkanConfig {
     }
 
     pub fn api_version(mut self, major: u32, minor: u32, patch: u32) -> Self {
-        self.api_version = vk_make_version!(major, minor, patch);
+        self.api_version = make_version(major, minor, patch);
         self
     }
 
     pub fn application_version(mut self, major: u32, minor: u32, patch: u32) -> Self {
-        self.application_version = vk_make_version!(major, minor, patch);
+        self.application_version = make_version(major, minor, patch);
         self
     }
 
     pub fn engine_version(mut self, major: u32, minor: u32, patch: u32) -> Self {
-        self.engine_version = vk_make_version!(major, minor, patch);
+        self.engine_version = make_version(major, minor, patch);
         self
     }
 
@@ -205,7 +211,7 @@ impl VulkanConfig {
             Some(eng_name) => CString::new(eng_name).expect("Failed to create c string"),
             None => CString::default(),
         };
-        let app_info = vk::ApplicationInfo {
+        let app_info = erupt::vk1_0::ApplicationInfo {
             api_version,
             p_application_name: c_app_name.as_ptr(),
             p_engine_name: c_engine_name.as_ptr(),
@@ -223,7 +229,7 @@ impl VulkanConfig {
             .filter(|(_, &present)| present == true)
             .map(|(layer, _)| layer.get_name().as_ptr())
             .collect();
-        let create_info = vk::InstanceCreateInfo {
+        let create_info = erupt::vk1_0::InstanceCreateInfo {
             p_application_info: &app_info,
             pp_enabled_extension_names: extensions_to_load.as_ptr(),
             enabled_extension_count: extensions_to_load.len() as u32,
@@ -231,11 +237,9 @@ impl VulkanConfig {
             enabled_layer_count: available_layers_to_load.len() as u32,
             ..Default::default()
         };
-        let instance = unsafe {
-            entry
-                .create_instance(&create_info, None)
-                .expect("Failed to create instance")
-        };
+        //let instance = InstanceLoader::new(&entry, &create_info, None).unwrap();
+        let instance = erupt::InstanceLoader::new(&entry, &create_info, None)
+                .expect("Failed to create instance");
         // TODO: Store the extensions and layers that were loaded
         let extensions_loaded = extensions_to_load.iter()
                                                     .map(|&ext| unsafe { CStr::from_ptr(ext) })
@@ -245,8 +249,8 @@ impl VulkanConfig {
 }
 
 pub struct VulkanApi {
-    entry: ash::Entry,
-    instance: ash::Instance,
+    entry: erupt::DefaultEntryLoader,
+    instance: erupt::InstanceLoader,
     extensions_loaded: HashSet<&'static CStr>,
 }
 
@@ -272,80 +276,27 @@ impl VulkanApi {
     // }
 
     // TODO: Here we should recieve a Window and extract the hwnd and hinstance from there
-    pub fn create_surface_win32(&self, hwnd: *const c_void, hinstance: *const c_void) -> Surface {
-        Surface::new(&self.entry, &self.instance, hwnd, hinstance)
+    pub fn create_surface<'a>(&'a self, window: &winit::window::Window) -> Surface<'a> {
+        Surface::new(&self.entry, &self.instance, window)
     }
 
-    pub fn configure_swapchain<'a, 'b>(&self, device: &'a VulkanDevice, surface: Surface<'b>) -> ConfigureSwapchain<'a, 'b> {
+    // pub fn configure_swapchain<'a, 'b>(&self, device: &'a VulkanDevice, surface: Surface<'b>) -> ConfigureSwapchain<'a, 'b> {
+    //     ConfigureSwapchain::new(&self.instance, device, surface)
+    // }
+
+    pub fn configure_swapchain<'a,'b>(&self, device: &'a VulkanDevice, surface: Surface<'b>) -> ConfigureSwapchain<'a, 'b> {
         ConfigureSwapchain::new(&self.instance, device, surface)
     }
 
-    pub fn create_renderer(&self, device: VulkanDevice, swapchain: Swapchain) -> RenderDevice {
-        RenderDevice {
-
-        }
+    pub fn create_renderer<'a>(self, device: VulkanDevice, swapchain: Swapchain<'a>) -> RenderDevice<'a> {
+        //let VulkanDevice {device, ..} = device;
+        let VulkanApi {instance, entry, extensions_loaded} = self;
+        RenderDevice::new(device, swapchain, instance, entry)
     }
 }
 
-impl Drop for VulkanApi {
-    fn drop(&mut self) {
-        use ash::version::InstanceV1_0;
-        unsafe { self.instance.destroy_instance(None) };
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_layers() {
-        let config = VulkanConfig::new()
-            .api_version(1, 0, 0)
-            .application_name("Bug")
-            .application_version(1, 0, 0)
-            .engine_version(1, 0, 0)
-            .with_layers(|mng| {
-                mng.add_layer(crate::Layers::KhronosValidation);
-            });
-        assert_eq!(config.layers_to_load.len(), 1);
-        let result = config.layers_to_load[&super::super::layers::Layers::KhronosValidation];
-        assert!(result);
-    }
-
-    #[test]
-    fn test_required_extensions() {
-        let config = VulkanConfig::new()
-            .api_version(1, 0, 0)
-            .application_name("Bug")
-            .application_version(1, 0, 0)
-            .engine_version(1, 0, 0)
-            .required_extensions(|mng| {
-                mng.add_extension(crate::InstanceExtensions::Win32Surface);
-                mng.add_extension(crate::InstanceExtensions::Surface);
-            })
-            .expect("Failed to load extensions");
-
-        // assert!(config.is_ok());
-        assert_eq!(config.requested_extensions.len(), 2);
-        let name_to_test = ash::extensions::khr::Win32Surface::name().as_ptr();
-        // Requires a reference to a reference since normally this points to an array of pointers to static &CStr
-        assert_eq!(config.requested_extensions.get(&crate::InstanceExtensions::Win32Surface), Some(&true));
-        // println!("Loaded extensions are {:?}", config.requested_extensions);
-    }
-
-    #[test]
-    fn test_optional_extensions() {
-        let config = VulkanConfig::new()
-            .api_version(1, 0, 0)
-            .application_name("Test")
-            .application_version(1, 0, 0)
-            .engine_version(1, 0, 0)
-            .optional_extensions(|mng| {
-                mng.add_extension(crate::InstanceExtensions::Win32Surface);
-            });
-        assert_eq!(config.requested_extensions.len(), 1);
-        let vulkan = config.init();
-        assert!(vulkan.extension_loaded(InstanceExtensions::Win32Surface), true);
-    }
-}
+// impl Drop for VulkanApi {
+//     fn drop(&mut self) {
+//         unsafe { self.instance.destroy_instance(None) };
+//     }
+// }

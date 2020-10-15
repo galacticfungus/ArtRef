@@ -1,8 +1,7 @@
 mod device;
 mod filter;
 
-use ash::version::{InstanceV1_0, EntryV1_0};
-use ash::vk;
+use erupt::vk1_0 as vk;
 
 use super::Gpu;
 
@@ -14,7 +13,7 @@ use crate::error;
 
 
 pub struct DeviceSelector<'a> {
-    instance: &'a ash::Instance,
+    instance: &'a erupt::InstanceLoader,
     // entry: &'a ash::Entry,
     suitable_devices: Vec<Gpu>,
 }

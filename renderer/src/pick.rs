@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub struct PickManager<'a, T, U> {
     items: &'a mut Vec<T>,
     available_items: &'a [U],
@@ -5,7 +6,7 @@ pub struct PickManager<'a, T, U> {
 }
 
 impl<'a, T, U: PartialEq> PickManager<'a, T, U> 
-    where U: From<&'a T> {
+    where U: From<&'a T> + std::fmt::Debug, T: std::fmt::Debug {
     pub fn new(items: &'a mut Vec<T>, output: &'a mut U, available_items: &'a [U]) -> PickManager<'a, T, U> {
         PickManager {
             items,
@@ -19,10 +20,12 @@ impl<'a, T, U: PartialEq> PickManager<'a, T, U>
         self
     }
 
-    pub fn get_first_available(mut self) -> () {
+    pub fn get_first_available(self) -> () {
         for item in self.items.iter() {
             let actual_item: U = item.into();
+            println!("Checking {:?} against {:?}", item, actual_item);
             if self.available_items.contains(&actual_item) {
+
                 *self.output = actual_item;
                 break;
             }
