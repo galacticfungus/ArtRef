@@ -1,3 +1,4 @@
+#[derive(Clone)]
 pub struct Version {
     version: u32,
 }

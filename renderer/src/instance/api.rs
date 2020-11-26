@@ -4,24 +4,16 @@
 
 use erupt::vk1_0 as vk;
 use erupt::vk1_0::make_version as make_version;
-use raw_window_handle::HasRawWindowHandle;
-// use winit::{
-//     dpi::{LogicalPosition, LogicalSize},
-//     event::{Event, KeyboardInput, ScanCode, WindowEvent},
-//     event_loop::{ControlFlow, EventLoop},
-//     window::{Window, WindowBuilder},
-// };
 
 use std::collections::{HashMap, HashSet};
 use std::ffi::CStr;
 use std::ffi::CString;
-use std::os::raw::{c_char, c_void};
+use std::os::raw::{c_char};
 
 use super::layers::LayerManager;
-use super::{DeviceSelector, VulkanDevice, Swapchain, ConfigureSwapchain, Surface, RenderDevice, ExtensionManager, InstanceExtensions, Layers};
-use crate::ConfigureDevice;
-use crate::Gpu;
-use crate::error;
+use super::{DeviceSelector, ExtensionManager, InstanceExtensions, Layers};
+use crate::{ConfigureDevice, SelectedDevice};
+use crate::error::{Error, ErrorKind, DisplayDebug};
 
 pub struct VulkanConfig {
     entry: erupt::DefaultEntryLoader,
@@ -37,8 +29,21 @@ pub struct VulkanConfig {
 }
 
 impl VulkanConfig {
-    pub fn new() -> Self {
-        let entry = erupt::EntryLoader::new().expect("Failed to load Vulkan");
+    pub fn new() -> Result<Self, Error> {
+        use erupt::utils::loading::{EntryLoaderError, LibraryError};
+        use std::fmt::Display;
+        use std::error::Error as ErrorTrait;
+        let entry = match erupt::EntryLoader::new() {
+            
+            Ok(entry) => entry,
+            // These two error objects both have debug and display traits so perhaps I should include them as source or as context?
+            // TODO: TO get better error information we need to override the default library loading code
+            Err(EntryLoaderError::EntryLoad(_)) => return Err(Error::new(ErrorKind::InitializationFailed, None)),
+            // This is an error from the libloading crate but accessing it from here is impossible as it has been wrapped in a LibraryError with private details
+            Err(EntryLoaderError::Library(_)) => {
+                return Err(Error::new(ErrorKind::VulkanNotInstalled, None));
+            },
+        };
         // Remember instance version differs from device version
         // let entry = Entry::new()?;
         // match entry.try_enumerate_instance_version()? {
@@ -55,10 +60,15 @@ impl VulkanConfig {
         let available_extensions = unsafe {entry
             .enumerate_instance_extension_properties(None, None) }
             .expect("Failed to load list of extensions");
+        // VK_ERROR_OUT_OF_HOST_MEMORY
+        // VK_ERROR_OUT_OF_DEVICE_MEMORY
+        // VK_ERROR_LAYER_NOT_PRESENT
 
         let available_layers = unsafe { entry.enumerate_instance_layer_properties(None) }.expect("Failed to load list of layers");
-        
-        VulkanConfig {
+        // VK_ERROR_OUT_OF_HOST_MEMORY
+        // VK_ERROR_OUT_OF_DEVICE_MEMORY
+
+        let config = VulkanConfig {
             entry,
             application_name: None,
             engine_name: None,
@@ -69,7 +79,8 @@ impl VulkanConfig {
             available_extensions,
             layers_to_load: HashMap::new(),
             available_layers,
-        }
+        };
+        Ok(config)
     }
 
     pub fn application_name<S: Into<String>>(mut self, app_name: S) -> Self {
@@ -100,7 +111,7 @@ impl VulkanConfig {
     // call_with_one<F>(some_closure: F) -> i32
     // where F: Fn(i32) -> i32 {
 
-    pub fn required_extensions<F>(mut self, required_extensions: F) -> Result<Self, error::Error>
+    pub fn required_extensions<F>(mut self, required_extensions: F) -> Result<Self, Error>
     where
         F: Fn(&mut ExtensionManager<InstanceExtensions>) -> (),
     {
@@ -121,11 +132,11 @@ impl VulkanConfig {
         if extensions_to_add.iter().any(|(_, present)| *present == false) {
             let missing_extensions: Vec<InstanceExtensions> = self
                 .requested_extensions
-                .into_iter()
-                .filter(|(_, present)| *present == false)
-                .map(|(ext, _)| ext)
+                .iter()
+                .filter(|(_, present)| **present == false)
+                .map(|(ext, _)| ext.clone())
                 .collect();
-            return Err(error::Error::InstanceExtensionsNotFound(missing_extensions));
+            return Err(Error::new(ErrorKind::InstanceExtensionsNotFound(missing_extensions), None));
         }
         
         self.requested_extensions.extend(extensions_to_add.into_iter());
@@ -160,7 +171,6 @@ impl VulkanConfig {
         let requested_extensions = mng.get_extensions();
         for extension in requested_extensions {
             if self.is_extension_available(&extension) {
-                // TODO: Ensure these pointers are valid as they should point to static strings inside the ash library
                 self.requested_extensions.insert(extension, true);
             } else {
                 self.requested_extensions.insert(extension, false);
@@ -187,45 +197,44 @@ impl VulkanConfig {
         self
     }
 
-    // Create an instance of Vulkan and begin device selection
-    pub fn init(self) -> VulkanApi {
-        let VulkanConfig {
-            application_name,
-            engine_name,
-            application_version,
-            engine_version,
-            api_version,
-            requested_extensions,
-            layers_to_load,
-            entry,
-            .. // We no longer have any need of the available extensions
-        } = self;
+    // Create an instance of the Vulkan API
+    pub fn init(self) -> Result<VulkanApi, Error> {
+        
         // TODO: These can be static references
         // Must be NULL or a c string
-        let c_app_name = match application_name {
-            Some(app_name) => CString::new(app_name).expect("Failed to create c string"),
-            None => CString::default(),
-        };
+        // let c_app_name = match &self.application_name {
+        //     Some(app_name) => CStr::from_bytes_with_nul(app_name.as_bytes()).expect(""),
+        //     None => Default::default(),
+        // };
         // Must be null or a C string
-        let c_engine_name = match engine_name {
-            Some(eng_name) => CString::new(eng_name).expect("Failed to create c string"),
-            None => CString::default(),
+        let app_name = match &self.application_name {
+                Some(app_name) => CString::new(app_name.as_str())
+                    .expect("Failed to create a c type string from the application name"),
+                None => CString::default(),
+        };
+        let engine_name = match &self.engine_name {
+                Some(eng_name) => CString::new(eng_name.as_str())
+                    .expect("Failed to create a c type string from the engin name"),
+                None => CString::default(),
         };
         let app_info = erupt::vk1_0::ApplicationInfo {
-            api_version,
-            p_application_name: c_app_name.as_ptr(),
-            p_engine_name: c_engine_name.as_ptr(),
-            engine_version,
-            application_version,
+            api_version: self.api_version,
+            p_application_name: app_name.as_c_str().as_ptr(),
+            p_engine_name: engine_name.as_c_str().as_ptr(),
+            engine_version: self.engine_version,
+            application_version: self.application_version,
             ..Default::default()
         };
-        // Convert the Extensions enum to raw pointers to c strings
-        let extensions_to_load: Vec<*const c_char> = requested_extensions
+        // TODO: Support required instance extensions and layers
+        // TODO: Double check all handling of c strings
+        // Convert the Extensions enum to raw pointers to c strings, only include extensions that are available
+        let extensions_to_load: Vec<*const c_char> = self.requested_extensions
             .iter()
             .filter(|(_, &present)| present == true)
             .map(|(ext, _)| ext.get_name().as_ptr())
             .collect();
-        let available_layers_to_load: Vec<*const c_char> = layers_to_load.iter()
+        // Filter layers that are not available
+        let available_layers_to_load: Vec<*const c_char> = self.layers_to_load.iter()
             .filter(|(_, &present)| present == true)
             .map(|(layer, _)| layer.get_name().as_ptr())
             .collect();
@@ -238,60 +247,47 @@ impl VulkanConfig {
             ..Default::default()
         };
         //let instance = InstanceLoader::new(&entry, &create_info, None).unwrap();
-        let instance = erupt::InstanceLoader::new(&entry, &create_info, None)
+        let instance = erupt::InstanceLoader::new(&self.entry, &create_info, None)
                 .expect("Failed to create instance");
-        // TODO: Store the extensions and layers that were loaded
+        // TODO: Handle possible errors
+        
+        // instance = Some(instance);
         let extensions_loaded = extensions_to_load.iter()
                                                     .map(|&ext| unsafe { CStr::from_ptr(ext) })
                                                     .collect::<HashSet<&'static CStr>>();
-        VulkanApi { entry, instance, extensions_loaded }
+        // TODO: store loaded layers
+        Ok(VulkanApi::new(self.entry, instance, extensions_loaded))
     }
 }
 
 pub struct VulkanApi {
-    entry: erupt::DefaultEntryLoader,
+    _entry: erupt::DefaultEntryLoader,
     instance: erupt::InstanceLoader,
     extensions_loaded: HashSet<&'static CStr>,
 }
 
 impl VulkanApi {
-    pub fn select_device(&self, surface: &mut Surface) -> Result<DeviceSelector, error::Error> {
-        DeviceSelector::new(&self.instance, surface)
+    pub fn new(entry: erupt::DefaultEntryLoader, instance: erupt::InstanceLoader, extensions_loaded: HashSet<&'static CStr>) -> VulkanApi {
+        
+        VulkanApi {
+            _entry: entry, 
+            instance, 
+            extensions_loaded,
+        }
     }
 
-    pub fn configure_device(&self, gpu: Gpu) -> Result<ConfigureDevice, error::Error> {
-        let Gpu {api_version, device_handle, device_features, queue_families, driver_version, vendor_id, device_id, device_name, device_type, available_extensions, surface_capabilities, surface_formats, present_modes} = gpu;
-        let config = ConfigureDevice::new(&self.instance, device_handle, queue_families, api_version, driver_version, vendor_id, device_id, device_name, device_type, available_extensions, device_features, surface_capabilities, surface_formats, present_modes);
-        Ok(config)
-    }
-
-    pub fn extension_loaded(&self, extension: super::InstanceExtensions) -> bool {
+    pub fn extension_loaded(&self, extension: crate::InstanceExtensions) -> bool {
         self.extensions_loaded.contains(extension.get_name())
     }
 
-    // TODO: Swapping to a enum based solution will still require something like the following, this code is safe as long as the CStr is validated
-    // pub fn raw_extension_loaded(&self, extension_name: &'static CStr) -> bool {
-    //     // How do we store the extensions that were loaded, since all the strings are static we can simply store the pointer
-    //     self.extensions_loaded.contains(extension_name)
-    // }
-
-    // TODO: Here we should recieve a Window and extract the hwnd and hinstance from there
-    pub fn create_surface<'a>(&'a self, window: &winit::window::Window) -> Surface<'a> {
-        Surface::new(&self.entry, &self.instance, window)
+    pub fn create_device_selector(&self, window: &winit::window::Window) -> Result<DeviceSelector, Error> {
+        let surface = crate::presenter::create_surface(&self.instance, window);
+        DeviceSelector::new(&self.instance, surface)    
     }
 
-    // pub fn configure_swapchain<'a, 'b>(&self, device: &'a VulkanDevice, surface: Surface<'b>) -> ConfigureSwapchain<'a, 'b> {
-    //     ConfigureSwapchain::new(&self.instance, device, surface)
-    // }
-
-    pub fn configure_swapchain<'a,'b>(&self, device: &'a VulkanDevice, surface: Surface<'b>) -> ConfigureSwapchain<'a, 'b> {
-        ConfigureSwapchain::new(&self.instance, device, surface)
-    }
-
-    pub fn create_renderer<'a>(self, device: VulkanDevice, swapchain: Swapchain<'a>) -> RenderDevice<'a> {
-        //let VulkanDevice {device, ..} = device;
-        let VulkanApi {instance, entry, extensions_loaded} = self;
-        RenderDevice::new(device, swapchain, instance, entry)
+    pub fn configure_device(&self, selected_device: SelectedDevice) -> ConfigureDevice {
+        // let SelectedDevice {api_version, device_handle, device_features, queue_families, driver_version, vendor_id, device_id, device_name, device_type, available_extensions} = selected_device;
+        ConfigureDevice::new(&self.instance, selected_device)
     }
 }
 

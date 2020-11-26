@@ -1,6 +1,6 @@
-use super::{DeviceFilter, SupportDeviceFiltering, Gpu, DeviceSelector, FiltersDevices, DeviceExtensions};
+use super::{DeviceFilter, SupportDeviceFiltering, Gpu, SuitableDevices, FiltersDevices, DeviceExtensions};
 use crate::{ExtensionManager, Features};
-use crate::error;
+use crate::error::{Error, ErrorKind};
 
 use erupt::vk1_0 as vk;
 
@@ -26,7 +26,7 @@ impl SupportDeviceFiltering for DeviceFilter {
     }
 }
 
-impl<'a> SupportDeviceFiltering for DeviceSelector<'a> {
+impl<'a> SupportDeviceFiltering for SuitableDevices {
     fn devices(&self) -> &[Gpu] {
         self.suitable_devices.as_slice()
     }
@@ -44,20 +44,16 @@ where
     fn required_device_extensions<F>(
         &'a mut self,
         select_extensions: F,
-    ) -> Result<&'a mut T, error::Error>
+    ) -> Result<(), Error>
     where
         F: Fn(&mut ExtensionManager<DeviceExtensions>) -> (),
     {
         use std::ffi::CString;
-        // TODO: Error handling code needs to destroy the instance - using drop wont work
-        // TODO: Since we cache device properties this code will fail in some circumstances unless the extension lists are pre loaded
-        // TODO: For example this would be impossible when creating a selector from a vec as there is no instance to use
-        // Currently select_extensions is called for each device rather than obtaining a list of needed extensions and filtering the devices all at once
-        // Extension manager needs to be changed so that it checks extensions after all the requests have been made
-        // or simplify extension manager to return a list of extensions that need to be loaded and do all checking outside of the manager
+        
         let mut em = ExtensionManager::new();
         select_extensions(&mut em);
         let requested_extensions = em.get_extensions();
+        // Iterates over each device checking if that device supports the required exenstions, storing the index of each device that doesn't
         let filtered_devices: Vec<usize> = self
             .devices()
             .iter()
@@ -69,8 +65,9 @@ where
             })
             .map(|(index, _)| index)
             .collect();
+        // All the devices support the required extensions
         if filtered_devices.is_empty() {
-            return Ok(self)
+            return Ok(())
         }
         if filtered_devices.len() > 0 && filtered_devices.len() < self.devices().len() {
             // Can apply filter
@@ -93,16 +90,16 @@ where
                     (device.clone(), missing_extensions)
                 })
                 .collect();
-            return Err(error::Error::MissingRequiredDeviceExtensions(devices));
+            return Err(Error::new(ErrorKind::MissingRequiredDeviceExtensions(devices), None));
         }
         // Set the new extensions to load - if no devices supporting these extensions were found this point is never reached
         // TODO: Add an extension one at a time
         // TODO: extensions_to_load should be a Hashmap if optional device extensions are to be supported
-        Ok(self)
+        Ok(())
     }
 
     // Will remove any device that isn't a discrete GPU, if no devices are discrete then no devices are filtered
-    fn is_discrete(&'a mut self) -> &'a mut T {
+    fn is_discrete(&'a mut self) {
         let filtered_indexes: Vec<usize> = self
             .devices()
             .iter()
@@ -117,11 +114,10 @@ where
                 mutable_devices.swap_remove(index);
             }
         }
-        self
     }
 
     // Will remove any device that isn't an integrated GPU, if there are no integrated GPU's then no devices are filtered
-    fn is_integrated(&'a mut self) -> &'a mut T {
+    fn is_integrated(&'a mut self) {
         let filtered_indexes: Vec<usize> = self
             .devices()
             .iter()
@@ -136,10 +132,9 @@ where
                 mutable_devices.swap_remove(index);
             }
         }
-        self
     }
 
-    fn has_graphics_queue(&'a mut self) -> &'a mut T {
+    fn has_graphics_queue(&'a mut self) {
         let indexes_to_keep: Vec<usize> = self
             .devices()
             .iter()
@@ -154,10 +149,9 @@ where
                 suitable_devices.swap_remove(index);
             }
         }
-        self
     }
 
-    fn has_queue(&'a mut self, operations_required: vk::QueueFlags, must_present: bool) -> &'a mut T {
+    fn has_queue(&'a mut self, operations_required: vk::QueueFlags, must_present: bool) {
         let indexes_to_keep: Vec<usize> = self
             .devices()
             .iter()
@@ -172,22 +166,21 @@ where
                 suitable_devices.swap_remove(index);
             }
         }
-        self
     }
     // Filters out any device that doesn't support the required operations in a single queue family, if no devices are found supporting the required operations then an error is returned
-    fn requires_queue(&'a mut self, operations_required: vk::QueueFlags) -> Result<&'a mut T, error::Error> {
+    fn requires_queue(&'a mut self, operations_required: vk::QueueFlags) -> Result<(), Error> {
         // TODO: Should this base its comparision on all families available or should it base it on an individual family
         // FIXME: This can simply iterate over all the families and OR their flags together and then compare that to the required operations
         self.devices_mut()
             .retain(|device| device.supports_operations(operations_required, false));
         if self.devices().is_empty() {
             // A device selector does not own the instance it is using so no need to destroy it on error
-            return Err(error::Error::NoGraphicsQueue);
+            return Err(Error::new(ErrorKind::NoGraphicsQueue, None));
         }
-        Ok(self)
+        Ok(())
     }
 
-    fn has_feature(&'a mut self, feature: &Features) -> &mut T {
+    fn has_feature(&'a mut self, feature: &Features) {
         let filtered_indexes: Vec<usize> = self
             .devices()
             .iter()
@@ -201,6 +194,5 @@ where
                 self.devices_mut().swap_remove(index);
             }
         }
-        self
     }
 }

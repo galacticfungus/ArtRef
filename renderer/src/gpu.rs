@@ -1,4 +1,4 @@
-use crate::{QueueFamily, Features, PciVendor, DeviceExtensions, Gpu};
+use crate::{QueueFamily, Features, PciVendor, DeviceExtensions, Gpu, Version};
 use erupt::vk1_0 as vk;
 use erupt::extensions::khr_surface as surface;
 use std::ffi::CStr;
@@ -17,13 +17,14 @@ impl Gpu {
         surface_capabilities: surface::SurfaceCapabilitiesKHR,
         surface_formats: Vec<surface::SurfaceFormatKHR>,
         present_modes: Vec<surface::PresentModeKHR>,
+        presentable: bool,
     ) -> Self {
         Gpu {
             device_handle: physical_device,
             device_name: properties.device_name,
             device_type: properties.device_type,
             queue_families: device_queues,
-            api_version: properties.api_version,
+            api_version: Version::from(properties.api_version),
             device_id: properties.device_id,
             vendor_id: PciVendor::from(properties.vendor_id),
             driver_version: properties.driver_version,
@@ -32,6 +33,7 @@ impl Gpu {
             surface_capabilities,
             surface_formats,
             present_modes,
+            presentable
         }
     }
 
@@ -111,9 +113,9 @@ impl Gpu {
         self.queue_families.as_mut_slice()
     }
 
-    pub fn take_handle(self) -> vk::PhysicalDevice {
-        self.device_handle
-    }
+    // pub fn take_handle(self) -> vk::PhysicalDevice {
+    //     self.device_handle
+    // }
 
     pub fn get_handle(&self) -> vk::PhysicalDevice {
         self.device_handle

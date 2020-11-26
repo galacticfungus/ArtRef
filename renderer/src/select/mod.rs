@@ -1,20 +1,26 @@
 mod device;
 mod filter;
+mod selected;
 
 use erupt::vk1_0 as vk;
 
 use super::Gpu;
 
 use std::ffi::CStr;
-
+use std::collections::HashSet;
 use crate::{PciVendor, QueueFamily, Features, DeviceExtensions};
-use crate::ExtensionManager;
+use erupt::extensions::khr_surface as surface;
+use crate::{ExtensionManager, Version};
 use crate::error;
 
 
 pub struct DeviceSelector<'a> {
     instance: &'a erupt::InstanceLoader,
-    // entry: &'a ash::Entry,
+    suitable_devices: SuitableDevices,
+    surface: surface::SurfaceKHR,
+}
+
+pub struct SuitableDevices {
     suitable_devices: Vec<Gpu>,
 }
 
@@ -29,20 +35,33 @@ pub trait SupportDeviceFiltering {
 /// Note that these filters work by collecting the index of items to be removed
 pub trait FiltersDevices<'a> {
     // TODO: explicitly prefer a physical device that supports drawing and presentation in the same queue 
-    fn has_queue(&'a mut self, operations_supported: vk::QueueFlags, must_present: bool) -> &'a mut Self;
+    fn has_queue(&'a mut self, operations_supported: vk::QueueFlags, must_present: bool);
     fn requires_queue(
         &'a mut self,
         operations_required: vk::QueueFlags,
-    ) -> Result<&'a mut Self, error::Error>;
-    fn has_graphics_queue(&'a mut self) -> &'a mut Self;
-    fn is_discrete(&'a mut self) -> &'a mut Self;
-    fn is_integrated(&'a mut self) -> &'a mut Self;
-    fn has_feature(&'a mut self, feature: &Features) -> &'a mut Self;
-    fn required_device_extensions<F>(&'a mut self, select_extensions: F) -> Result<&'a mut Self, error::Error>
+    ) -> Result<(), error::Error>;
+    fn has_graphics_queue(&'a mut self);
+    fn is_discrete(&'a mut self);
+    fn is_integrated(&'a mut self);
+    fn has_feature(&'a mut self, feature: &Features);
+    fn required_device_extensions<F>(&'a mut self, select_extensions: F) -> Result<(), error::Error>
         where F: Fn(&mut ExtensionManager<DeviceExtensions>) -> ();
 }
 
 pub struct DeviceFilter {
     devices_to_filter: Vec<Gpu>,
     extensions_to_load: Vec<&'static CStr>,
+}
+
+pub struct SelectedDevice {
+    pub(super) device_handle: vk::PhysicalDevice,
+    pub(super) queue_families: Vec<QueueFamily>,
+    pub(super) api_version: Version,
+    pub(super) driver_version: u32,
+    pub(super) vendor_id: PciVendor,
+    pub(super) device_id: u32,
+    pub(super) device_name: [i8; erupt::vk1_0::MAX_PHYSICAL_DEVICE_NAME_SIZE as usize],
+    pub(super) device_type: vk::PhysicalDeviceType,
+    pub(super) available_extensions: Vec<vk::ExtensionProperties>,
+    pub(super) device_features: vk::PhysicalDeviceFeatures,
 }

@@ -1,4 +1,5 @@
 
+#[derive(Clone, Copy)]
 pub enum Features {
     /// Enables the geoetry shader stage in the graphis pipeline
     GeometryShader,

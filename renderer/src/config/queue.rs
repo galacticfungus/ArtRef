@@ -14,6 +14,7 @@ impl<'a> QueueManager<'a> {
             index: 0,
         }
     }
+
     /// Returns the number of queues that support the required flags
     pub fn queues_that_support(&self, operations_required: vk::QueueFlags) -> usize {
         self.family_data
@@ -22,6 +23,7 @@ impl<'a> QueueManager<'a> {
             .map(|family| family.total_queues() as usize)
             .sum()
     }
+
     /// Returns the number of queues that can present to a surface
     pub fn queues_that_present(&self) -> usize {
         self.family_data
@@ -30,6 +32,7 @@ impl<'a> QueueManager<'a> {
             .map(|family| family.total_queues() as usize)
             .sum()
     }
+
     /// Returns the total number of queues across all queue families
     pub fn total_queues(&self) -> usize {
         self.family_data
@@ -112,11 +115,11 @@ impl<'a> QueueManager<'a> {
             Some((index_to_use, family_index)) => {
                 self.render_queues.create_graphics_queue(family_index, priority, index_to_use, must_present);
             },
-            None => {},
+            None => {
+                // TODO: Return an error as we failed to create the queue
+            },
         }
         // TODO: Add the family and queue to the RendererQueue object
-        
-        
     }
 
     pub fn create_transfer_queue(&mut self, priority: f32) {
@@ -136,10 +139,6 @@ impl<'a> QueueManager<'a> {
             None => {},
         }
     }
-
-    // pub fn create_multiple_compute_queues(&mut self, priorities: &[f32]) {
-    //     self.create_multiple_queues_that_support(vk::QueueFlags::COMPUTE, priorities, false)
-    // }
 
     pub fn create_sparse_queue(&mut self, priority: f32) {
         match self.create_queue_that_supports(vk::QueueFlags::SPARSE_BINDING, priority, false) {

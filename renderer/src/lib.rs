@@ -9,11 +9,12 @@ mod extensions;
 mod features;
 mod queues;
 mod select;
-mod surface;
 mod vendor;
-mod render;
-mod swapchain;
+mod presenter;
+mod pipeline;
+mod renderpass;
 
+pub use pipeline::ConfigurePipeline;
 pub use crate::error::Error;
 pub use pick::PickManager;
 pub use version::Version;
@@ -25,13 +26,12 @@ pub use instance::Layers;
 pub use features::{Features, Feature};
 
 pub use queues::{QueueFamily, DeviceQueue, RendererQueues, OperationQueue, RendererQueuesBuilder};
-pub use select::{DeviceSelector, DeviceFilter, FiltersDevices};
-pub use surface::Surface;
+pub use select::{DeviceSelector, DeviceFilter, FiltersDevices, SelectedDevice};
 pub use vendor::PciVendor;
-pub use render::RenderDevice;
 pub use device::VulkanDevice;
+pub use presenter::{Presenter, ConfigurePresenter, PresentMode, SurfaceFormat, SurfaceColourSpace, SwapchainExtent, SwapchainImageCount};
 pub use config::{ConfigureDevice, DeviceExtensions};
-pub use swapchain::{Swapchain, ConfigureSwapchain, PresentMode, SurfaceFormat, SurfaceColourSpace};
+pub use renderpass::Renderpass;
 
 use erupt::vk1_0 as vk;
 use erupt::extensions::khr_surface;
@@ -41,7 +41,7 @@ use erupt::extensions::khr_surface;
 pub struct Gpu {
     device_handle: vk::PhysicalDevice,
     queue_families: Vec<QueueFamily>,
-    api_version: u32,
+    api_version: Version,
     driver_version: u32,
     vendor_id: PciVendor,
     device_id: u32,
@@ -52,6 +52,7 @@ pub struct Gpu {
     surface_capabilities: khr_surface::SurfaceCapabilitiesKHR,
     surface_formats: Vec<khr_surface::SurfaceFormatKHR>,
     present_modes: Vec<khr_surface::PresentModeKHR>,
+    presentable: bool,
     // pipelinecacheID,
     // limits,
     // sparse_properties,

@@ -5,7 +5,6 @@ mod queue;
 pub use extensions::DeviceExtensions;
 use super::{QueueFamily, DeviceQueue, PciVendor, Features, Feature, ExtensionManager, RendererQueues, OperationQueue, RendererQueuesBuilder};
 use crate::Version;
-
 use erupt::vk1_0 as vk;
 use erupt::extensions::khr_surface as surface;
 use std::collections::HashMap;
@@ -25,17 +24,13 @@ pub struct ConfigureDevice<'a> {
     device_name: [i8; erupt::vk1_0::MAX_PHYSICAL_DEVICE_NAME_SIZE as usize],
     device_type: vk::PhysicalDeviceType,
     // Available device extensions
-    available_extensions: Vec<vk::ExtensionProperties>,
+    available_device_extensions: Vec<vk::ExtensionProperties>,
     // Device Extensions to load
     extensions_to_load: HashMap<DeviceExtensions, bool>,
     // Available Features
     device_features: vk::PhysicalDeviceFeatures,
     // Enabled Features
     enabled_features: vk::PhysicalDeviceFeatures,
-    // We only store the results from the queries here, we dont select surface options until we create a swapchain
-    surface_capabilities: surface::SurfaceCapabilitiesKHR,
-    surface_formats: Vec<surface::SurfaceFormatKHR>,
-    present_modes: Vec<surface::PresentModeKHR>,
 }
 
 #[derive(Debug)]

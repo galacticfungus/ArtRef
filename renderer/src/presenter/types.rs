@@ -1,50 +1,14 @@
 use erupt::vk1_0 as vk;
 use erupt::extensions::khr_surface as surface;
-use erupt::extensions::khr_swapchain;
-use crate::Surface;
-use crate::device;
-mod config;
-mod types;
-mod swapchain;
-// TODO: Should we keep surface capabilities, we certainly need to compute a new size, we are able to just get a new surface capabilities
-#[derive(Debug)]
-pub struct Swapchain<'a> {
-    image_count: u32,
-    present_mode: surface::PresentModeKHR,
-    surface_format: surface::SurfaceFormatKHR,
-    surface: Surface<'a>,
-    swapchain_extent: vk::Extent2D,
-    image_usage: vk::ImageUsageFlags,
-    sharing_mode: vk::SharingMode,
-    swapchain: khr_swapchain::SwapchainKHR,
-    clipped: bool,
-    composite_alpha: surface::CompositeAlphaFlagsKHR,
-    transform: surface::SurfaceTransformFlagBitsKHR,
-    previous_swapchain: Option<khr_swapchain::SwapchainKHR>,
-    images: Vec<vk::Image>
-    // queue indicies and count if in Sharing Mode
-}
-
-pub struct ConfigureSwapchain<'a, 'b> {
-    surface_format: Option<surface::SurfaceFormatKHR>,
-    present_mode: Option<surface::PresentModeKHR>,
-    present_modes: &'a [surface::PresentModeKHR],
-    surface_formats: &'a [surface::SurfaceFormatKHR],
-    surface_capabilities: &'a surface::SurfaceCapabilitiesKHR,
-    surface: Surface<'b>,
-    swapchain_extent: Option<vk::Extent2D>,
-    image_count: Option<u32>,
-    device: &'a device::VulkanDevice
-}
 #[derive(Debug)]
 pub enum PresentMode {
-    /// Specifies that the presentation engine does not wait for a vertical blanking period to update the current image, meaning 
+    /// Specifies that the presentation engine does not wait for a vertical blanking period to update the current image, meaning
     /// this mode may result in visible tearing. No internal queuing of presentation requests is needed, as the requests are applied immediately.
     Immediate,
     /// Mailbox specifies that the presentation engine waits for the next vertical blanking period to update the current image.
-    /// Tearing cannot be observed. An internal single-entry queue is used to hold pending presentation requests. If the queue is full when a 
-    /// new presentation request is received, the new request replaces the existing entry, and any images associated with the prior entry become 
-    /// available for re-use by the application. One request is removed from the queue and processed during each vertical blanking period in which 
+    /// Tearing cannot be observed. An internal single-entry queue is used to hold pending presentation requests. If the queue is full when a
+    /// new presentation request is received, the new request replaces the existing entry, and any images associated with the prior entry become
+    /// available for re-use by the application. One request is removed from the queue and processed during each vertical blanking period in which
     /// the queue is non-empty.
     Mailbox,
     /// Fifo specifies that the presentation engine waits for the next vertical blanking period to update the current image.
@@ -82,7 +46,7 @@ pub enum SurfaceFormat {
 }
 #[derive(Debug)]
 pub enum SurfaceColourSpace {
-    SRGBNonlinear
+    SRGBNonlinear,
 }
 #[derive(Debug)]
 pub struct SwapchainExtent {
@@ -124,5 +88,88 @@ impl SwapchainExtent {
     pub fn set_extent(&mut self, width: u32, height: u32) {
         self.width = width;
         self.height = height;
+    }
+}
+
+pub struct SwapchainImageCount {
+    min_images: u32,
+    max_images: u32,
+    image_count: u32,
+}
+
+impl SwapchainImageCount {
+    pub fn new(min_images: u32, max_images: u32) -> SwapchainImageCount {
+        SwapchainImageCount {
+            min_images,
+            max_images,
+            image_count: 0,
+        }
+    }
+
+    pub fn min_images(&self) -> u32 {
+        self.min_images
+    }
+
+    pub fn max_images(&self) -> u32 {
+        self.max_images
+    }
+
+    pub fn set_image_count(&mut self, image_count: u32) {
+        self.image_count = image_count;
+    }
+
+    pub fn image_count(image_count: SwapchainImageCount) -> u32 {
+        image_count.image_count
+    }
+}
+
+impl std::convert::From<surface::PresentModeKHR> for PresentMode {
+    fn from(present_mode: surface::PresentModeKHR) -> Self {
+        match present_mode {
+            surface::PresentModeKHR::IMMEDIATE_KHR => PresentMode::Immediate,
+            surface::PresentModeKHR::MAILBOX_KHR => PresentMode::Mailbox,
+            surface::PresentModeKHR::FIFO_KHR => PresentMode::Fifo,
+            surface::PresentModeKHR::FIFO_RELAXED_KHR => PresentMode::FifoRelaxed,
+            surface::PresentModeKHR::SHARED_DEMAND_REFRESH_KHR => PresentMode::SharedDemandRefresh,
+            surface::PresentModeKHR::SHARED_CONTINUOUS_REFRESH_KHR => {
+                PresentMode::SharedContinuousRefresh
+            }
+            _ => unreachable!("Unknown present mode found when converting a PresentModeKHR"),
+        }
+    }
+}
+
+impl std::convert::From<&PresentMode> for erupt::extensions::khr_surface::PresentModeKHR {
+    fn from(present_mode: &PresentMode) -> Self {
+        match present_mode {
+            PresentMode::Immediate => surface::PresentModeKHR::IMMEDIATE_KHR,
+            PresentMode::Mailbox => surface::PresentModeKHR::MAILBOX_KHR,
+            PresentMode::Fifo => surface::PresentModeKHR::FIFO_KHR,
+            PresentMode::FifoRelaxed => surface::PresentModeKHR::FIFO_RELAXED_KHR,
+            PresentMode::SharedDemandRefresh => surface::PresentModeKHR::SHARED_DEMAND_REFRESH_KHR,
+            PresentMode::SharedContinuousRefresh => {
+                surface::PresentModeKHR::SHARED_CONTINUOUS_REFRESH_KHR
+            }
+        }
+    }
+}
+
+impl From<&SurfaceFormat> for erupt::vk1_0::Format {
+    fn from(format: &SurfaceFormat) -> erupt::vk1_0::Format {
+        match format {
+            SurfaceFormat::B8G8R8A8UNorm => erupt::vk1_0::Format::B8G8R8A8_UNORM,
+            SurfaceFormat::B8G8R8A8SRGB => erupt::vk1_0::Format::B8G8R8A8_SRGB,
+            SurfaceFormat::R8G8B8A8UNorm => erupt::vk1_0::Format::R8G8B8A8_UNORM,
+            SurfaceFormat::R8G8B8A8SRGB => erupt::vk1_0::Format::R8G8B8A8_SRGB,
+            SurfaceFormat::R5G6B5UNormPack16 => erupt::vk1_0::Format::R5G6B5_UNORM_PACK16,
+        }
+    }
+}
+
+impl From<&SurfaceColourSpace> for surface::ColorSpaceKHR {
+    fn from(colour_space: &SurfaceColourSpace) -> surface::ColorSpaceKHR {
+        match colour_space {
+            SurfaceColourSpace::SRGBNonlinear => surface::ColorSpaceKHR::SRGB_NONLINEAR_KHR,
+        }
     }
 }

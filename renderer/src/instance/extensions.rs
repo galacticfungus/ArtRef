@@ -1,9 +1,5 @@
 use std::ffi::CStr;
 
-
-
-
-
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub enum InstanceExtensions {
     Surface,
@@ -20,8 +16,6 @@ impl InstanceExtensions {
         }
     }
 }
-
-
 
 impl std::fmt::Display for InstanceExtensions {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> { 
