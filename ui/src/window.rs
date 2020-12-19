@@ -129,24 +129,19 @@ impl Window {
             .expect("Failed to decode fragment shader code as &[32]");
         
         let mut configure_pipeline = device.create_pipeline();
-        configure_pipeline.configure_shaders(|shaders| {
-            shaders.create_fragment_shader(|shader_config|{
-                shader_config.entry_name("main")
-                    .shader_code(fragment_shader);
-            }).create_vertex_shader(|configure_shader| {
-                    configure_shader.entry_name("main")
-                      .shader_code(vertex_shader);
-            });
+        configure_pipeline.configure_shaders(&mut |shaders| {
+            shaders.create_fragment_shader("main",fragment_shader.as_slice())
+                   .create_vertex_shader("main",vertex_shader.as_slice());
         })
-        .configure_vertex_input(|configure_input|{
+        .configure_vertex_input(&mut|configure_input|{
             configure_input.add_binding(0,erupt::vk1_0::VertexInputRate::VERTEX, 1)
                 .add_attribute(0, erupt::vk1_0::Format::A2B10G10R10_SINT_PACK32, 0,1);
         }).configure_input_assembely(erupt::vk1_0::PrimitiveTopology::TRIANGLE_LIST, false)
-        .configure_viewport(|viewports|{
+        .configure_viewport(&mut|viewports|{
             // TODO: Support multiple viewports as well as some way to check if its available
             viewports.create_viewport(0.0, 0.0, presenter.get_width() as f32, presenter.get_height() as f32, 0.0, 1.0, 0, 0, presenter.get_width(), presenter.get_height())
         })
-        .configure_rasterizer(|config|{
+        .configure_rasterizer(&mut|config|{
 
         });
         

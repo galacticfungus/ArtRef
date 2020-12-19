@@ -1,4 +1,3 @@
-use erupt::extensions::khr_surface as surface;
 use erupt::vk1_0 as vk;
 use std::collections::HashMap;
 use std::ffi::CStr;
