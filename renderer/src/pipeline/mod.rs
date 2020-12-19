@@ -26,14 +26,8 @@ pub struct RasterizerSettings {
 }
 
 pub struct ConfigureShaders<'a> {
-    configured_shaders: Vec<ConfigureShader>,
+    configured_shaders: Vec<ShaderData>,
     device: &'a erupt::DeviceLoader,
-}
-
-pub struct ConfigureShader {
-    entry_name: Option<CString>,
-    shader_code: Option<Vec<u32>>,
-    shader_type: vk::ShaderStageFlagBits
 }
 
 pub struct VertexInputSettings<'a> {
@@ -49,7 +43,7 @@ pub struct Viewport {
 }
 pub struct ShaderData {
     entry_name: CString,
-    shader_code: Vec<u32>,
+    shader_module: vk::ShaderModule,
     shader_type: vk::ShaderStageFlagBits,
 }
 
