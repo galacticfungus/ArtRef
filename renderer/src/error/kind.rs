@@ -4,7 +4,7 @@ impl PartialEq for ErrorKind {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             // TODO: Macro for this
-            // TODO: It may be easier to impl PartialEq for the types that are parameters, can't impl PartialEq for CString
+            // It would have been easier to impl PartialEq for the types that are parameters, but can't impl PartialEq for CString
             // TODO: Ideally we remove the need to compare these but users of the library probably want to check the results
             (ErrorKind::DeviceExtensionsNotFound(_),  ErrorKind::DeviceExtensionsNotFound(_)) => true,
             (ErrorKind::ExtensionNotFound(_),  ErrorKind::ExtensionNotFound(_)) => true,
@@ -104,6 +104,7 @@ impl std::fmt::Display for ErrorKind {
                 
             },
             ErrorKind::VulkanNotInstalled => f.write_fmt(format_args!("Failed to load the Vulkan library, is Vulkan not installed?")),
+            ErrorKind::InvalidShaderEntryMethodName(name) => f.write_fmt(format_args!("An invalid C string was used as the entry name for a shader, name was {:?}", name))
         }
     }
 }

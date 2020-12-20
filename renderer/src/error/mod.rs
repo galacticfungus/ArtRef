@@ -58,4 +58,5 @@ pub enum ErrorKind {
     InvalidPipelineConfig,  // Is the best we can do a context message about what was misconfigured
     FailedToGetDeviceExtensions(Option<String>),
     VulkanNotInstalled,
+    InvalidShaderEntryMethodName(Vec<u8>),
 }

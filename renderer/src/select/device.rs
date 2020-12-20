@@ -56,11 +56,10 @@ impl<'a> DeviceSelector<'a> {
                         let c_device_name: &CStr = unsafe { CStr::from_ptr(device_properties.device_name.as_ptr()) };
                         let device_name = match c_device_name.to_str() { // An error here should be impossible since Vulkan Specification states that the c strings must be UTF8
                             Ok(device_name) => Some(device_name.to_string()),
-                            Err(_) => None, // Not being able to parse this probably means that the underlying data structure is corrupted since it required to be UTF8
+                            Err(_) => None, // Not being able to parse this probably means that the underlying data structure is corrupted since the standard specifies UTF8 encoded names
                                             // TODO: Can this be added as context
                         };
-                        return Err(Error::new(ErrorKind::FailedToGetDeviceExtensions(device_name), Some(Error::from(error)))
-                            .with_context(&"Occured while getting a devices properties during device selection"));
+                        return Err(Error::new(ErrorKind::FailedToGetDeviceExtensions(device_name), Some(Error::from(error))));
                     },
             };
         // VK_ERROR_OUT_OF_HOST_MEMORY

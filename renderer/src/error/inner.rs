@@ -9,27 +9,9 @@ impl InnerError {
             source,
         }
     }
-
-    pub fn add_context(&mut self, context: &'static (dyn DisplayDebug + Send + Sync)) {
-        self.context.add_context(context);
-    }
-
-    pub fn add_debug_context(&mut self, context: &'static (dyn std::fmt::Debug + Send + Sync)) {
-        self.context.add_debug_context(context);
-    }
-
-    pub fn add_display_context(&mut self, context: &'static (dyn std::fmt::Display + Send + Sync)) {
-        self.context.add_display_context(context);
-    }
     
     pub fn kind(&self) -> &ErrorKind {
         &self.kind
-    }
-
-    // TODO: There is no need to store the source as a trait object we can just cast to the appropriate type
-    pub fn source(&self) -> Option<&Error> {
-        self.source.as_ref()
-
     }
 }
 

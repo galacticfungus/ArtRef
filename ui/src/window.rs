@@ -3,6 +3,7 @@ use super::{
     DeviceExtensions, Features, InstanceExtensions, PciVendor, VulkanConfig, PresentMode, SwapchainExtent, SwapchainImageCount, SurfaceColourSpace, SurfaceFormat
 };
 use std::os::raw::c_void;
+use erupt::vk1_0::VertexInputRate;
 use winit;
 
 
@@ -130,13 +131,18 @@ impl Window {
         
         let mut configure_pipeline = device.create_pipeline();
         configure_pipeline.configure_shaders(&mut |shaders| {
-            shaders.create_fragment_shader("main",fragment_shader.as_slice())
-                   .create_vertex_shader("main",vertex_shader.as_slice());
-        })
+            shaders.create_fragment_shader("main",fragment_shader.as_slice())?
+                   .create_vertex_shader("main",vertex_shader.as_slice())?;
+            Ok(())
+        }).expect("Failed to configure shaders")
         .configure_vertex_input(&mut|configure_input|{
             configure_input.add_binding(0,erupt::vk1_0::VertexInputRate::VERTEX, 1)
-                .add_attribute(0, erupt::vk1_0::Format::A2B10G10R10_SINT_PACK32, 0,1);
-        }).configure_input_assembely(erupt::vk1_0::PrimitiveTopology::TRIANGLE_LIST, false)
+                .add_attribute(0, erupt::vk1_0::Format::A2B10G10R10_SINT_PACK32)
+                .add_attribute(1, erupt::vk1_0::Format::A2B10G10R10_SINT_PACK32);
+            // configure_input.add_binding(1, VertexInputRate::INSTANCE, 8)
+            //     .add_attribute(2, erupt::vk1_0::Format::R8G8B8_SRGB);
+        })
+        .configure_input_assembely(erupt::vk1_0::PrimitiveTopology::TRIANGLE_LIST, false)
         .configure_viewport(&mut|viewports|{
             // TODO: Support multiple viewports as well as some way to check if its available
             viewports.create_viewport(0.0, 0.0, presenter.get_width() as f32, presenter.get_height() as f32, 0.0, 1.0, 0, 0, presenter.get_width(), presenter.get_height())

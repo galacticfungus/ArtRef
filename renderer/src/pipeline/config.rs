@@ -19,12 +19,14 @@ impl<'a> ConfigurePipeline<'a> {
         }
     }
 
-    pub fn configure_shaders(&mut self, define_shaders: &mut dyn FnMut(&mut ConfigureShaders)) -> &mut dyn ConfigureVertexInput
+    pub fn configure_shaders(&mut self, define_shaders: &mut dyn FnMut(&mut ConfigureShaders) -> Result<(), Error>) -> Result<&mut dyn ConfigureVertexInput, Error>
     {
         let mut configure_shaders = ConfigureShaders::new(self.device);
-        define_shaders(&mut configure_shaders);
+        if let Err(error) = define_shaders(&mut configure_shaders) {
+            return Err(error);
+        }
         self.configured_shaders = Some(configure_shaders);
-        self
+        Ok(self)
     }
 
     // TODO: This function can fail if the bindings or attribute lengths exceed a u32, a device will support a fraction of this amount
