@@ -30,46 +30,6 @@ impl<'a> ConfigurePipeline<'a> {
         Ok(self)
     }
 
-    // TODO: This function can fail if the bindings or attribute lengths exceed a u32, a device will support a fraction of this amount
-    // pub fn configure_vertex_input<F>(mut self, configure_input: F) -> Self
-    // where
-    //     F: FnOnce(&mut ConfigureVertexInput) -> (),
-    // {
-        
-    //     // let vert_input_stage = vk::PipelineVertexInputStateCreateInfoBuilder::new();
-    //     // vert_input_stage.vertex_attribute_descriptions(vertex_attribute_descriptions)
-    //     // vert_input_stage.vertex_binding_descriptions(vertex_binding_descriptions)
-    //     // TODO: When configuring the input we should pass in the maximium allowed vertex inputs that the device allows
-        
-    //     let mut config = ConfigureVertexInput::new(&mut self.vertex_binding_descriptions, &mut self.vertex_attribute_descriptions);
-    //     configure_input(&mut config);
-
-    //     // We create a vk::PipelineVertexInputStateCreateInfo from the data this function creates
-    //     // TODO: We cant create this struct now as references are destroyed when we move self
-    //     // TODO: One option is to box the underlying datastructres that place that in self then valid references would remain valid as we only move a smart pointer
-    //     // let b = vk::PipelineVertexInputStateCreateInfoBuilder::new()
-    //     //     .vertex_attribute_descriptions(self.vertex_attribute_descriptions.as_slice())
-    //     //     .vertex_binding_descriptions(self.vertex_binding_descriptions.as_slice());
-    //     // self.vertex_input_info = Some(b);
-    //     self
-    // }
-
-    // pub fn configure_input_assembely(
-    //     mut self,
-    //     topology: vk::PrimitiveTopology,
-    //     enable_restart: bool,
-    // ) -> Self {
-    //     // TODO: Using this is dangerous, it sets the API to be non-updatable, while if we have an object that is passed to a user defined closure then using traits lets us expand on that objects functionality
-    //     // VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
-    //     // inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    //     // inputAssembly.primitiveRestartEnable = VK_FALSE;
-    //     let pipeline_input = vk::PipelineInputAssemblyStateCreateInfoBuilder::new()
-    //         .topology(topology)
-    //         .primitive_restart_enable(enable_restart);
-    //     self.pipeline_input = Some(pipeline_input);
-    //     self
-    // }
-
     // pub fn configure_viewport<F>(mut self, create_viewport: F) -> Self
     // where
     //     F: Fn(&mut ViewportManager) -> (),

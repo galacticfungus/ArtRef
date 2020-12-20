@@ -44,7 +44,7 @@ impl ViewportManager {
         scissor_width: u32,
         scissor_height: u32,
     ) {
-        // TODO: Check that mutiple viewports are supported
+        // TODO: Check that mutiple viewports are supported before allowing their creation
         // Width and Height are limited to the max values of a framebuffer
         let viewport = Viewport::new(
             x,
