@@ -10,92 +10,78 @@ impl<'a> ConfigureRasterizer for ConfigurePipeline<'a> {
         &mut self,
         configure_rasterizer: &mut dyn FnMut(&mut RasterizerSettings),
     ) {
+        let mut builder = vk::PipelineRasterizationStateCreateInfoBuilder::new();
         // Many of these options require the use of device features
-        let mut config = RasterizerSettings::new();
+        let mut config = RasterizerSettings::new(&mut builder);
         configure_rasterizer(&mut config);
 
-        let builder = vk::PipelineRasterizationStateCreateInfoBuilder::new();
-        // TODO: Helper struct that can determine if certain options are available and allow customizing those options conditionally
-        // TODO: Although you are more likely to create a different pipeline altogether that modify one conditionally?
-        config.build_rasterizer();
-        builder.depth_bias_clamp(0.0);
-        builder.depth_bias_enable(false);
-        builder.polygon_mode(vk::PolygonMode::FILL);
-        builder.cull_mode(vk::CullModeFlags::BACK);
-        builder.rasterizer_discard_enable(false);
-        builder.line_width(1.);
-        //self
+        self.rasterizer_configuration = Some(builder);
     }
 }
 
-impl RasterizerSettings {
+impl<'a,'b: 'a> RasterizerSettings<'a, 'b> {
+    // Many of these functions require a GPU feature to have been enabled
+    /// Determines how fragments are generated for geometry.
     pub fn polygon_mode(&mut self, polygon_mode: vk::PolygonMode) {
-        self.polygon_mode = Some(polygon_mode);
+        self.settings.polygon_mode(polygon_mode);
     }
-
+    /// If depthClampEnable is set to true, then fragments that are beyond the near and far planes
+    /// are clamped to them as opposed to discarding them
     pub fn depth_clamp(&mut self, depth_clamp: bool) {
-        self.depth_clamp = Some(depth_clamp);
+        self.settings.depth_clamp_enable(depth_clamp);
     }
 
+    /// Discards the primivites immediately before rasterization, effectively not drawing them
     pub fn rasterizer_discard(&mut self, rasterizer_discard: bool) {
-        self.rasterizer_discard = Some(rasterizer_discard);
+        self.settings.rasterizer_discard_enable(rasterizer_discard);
     }
-
+    /// Describes the thickness of lines in terms of number of fragments, a value above 1.0 requires a GPU feature
     pub fn line_width(&mut self, line_width: f32) {
-        self.line_width = Some(line_width);
+        self.settings.line_width(line_width);
     }
-
+    /// Type of face culling to use
     pub fn cull_mode(&mut self, cull_mode: vk::CullModeFlags) {
-        self.cull_mode = Some(cull_mode);
+        self.settings.cull_mode(cull_mode);
     }
-
+    /// Specifies the vertex order for faces to be considered front-facing and can be clockwise or counterclockwise
     pub fn front_face(&mut self, front_face: vk::FrontFace) {
-        self.front_face = Some(front_face);
+        self.settings.front_face(front_face);
     }
-
+    /// Alter the depth values by adding a constant value or biasing them based on a fragment's slope
     pub fn depth_bias(&mut self, depth_bias: bool) {
-        self.depth_bias = Some(depth_bias);
+        self.settings.depth_bias_enable(depth_bias);
     }
 
     pub fn depth_bias_constant_factor(&mut self, depth_bias_constant_factor: f32) {
-        self.depth_bias_constant_factor = depth_bias_constant_factor;
+        self.settings.depth_bias_constant_factor(depth_bias_constant_factor);
     }
 
     pub fn depth_bias_clamp(&mut self, depth_bias_clamp: f32) {
-        self.depth_bias_clamp = depth_bias_clamp;
+        self.settings.depth_bias_clamp(depth_bias_clamp);
     }
 
     pub fn depth_bias_slope_factor(&mut self, depth_bias_slope_factor: f32) {
-        self.depth_bias_slope_factor = depth_bias_slope_factor;
+        self.settings.depth_bias_slope_factor(depth_bias_slope_factor);
     }
 
-    pub fn new() -> RasterizerSettings {
+    pub fn new(rasterizer_settings: &'a mut vk::PipelineRasterizationStateCreateInfoBuilder<'b>) -> RasterizerSettings<'a, 'b> {
         RasterizerSettings {
-            polygon_mode: None,
-            rasterizer_discard: None,
-            depth_clamp: None,
-            line_width: None,
-            cull_mode: None,
-            front_face: None,
-            depth_bias: None,
-            depth_bias_constant_factor: 0.0,
-            depth_bias_clamp: 0.0,
-            depth_bias_slope_factor: 0.0,
+            settings: rasterizer_settings,
         }
     }
 
-    pub fn build_rasterizer(self) -> Result<vk::PipelineRasterizationStateCreateInfo, Error> {
-        // let ConfigureRasterizer {cull_mode, depth_bias, depth_bias_clamp, depth_bias_constant_factor, depth_bias_slope_factor, depth_clamp, front_face, line_width, polygon_mode, rasterizer_discard} = self;
-        // TODO: Unwrap all the fields or return None?
-        let config = self;
-        let cull_mode = config.cull_mode.ok_or(Error::new(ErrorKind::InvalidPipelineConfig, None))?;
-        let depth_clamp = config.depth_clamp.ok_or(Error::new(ErrorKind::InvalidPipelineConfig, None))?;
-        // let depth_bias_constant_factor = self.depth_bias_constant_factor.ok_or(Error::InvalidRasterizationConfig("Depth Clamp was not set during the fixed function rasterization stage", self))?;
-        let rasterizer = vk::PipelineRasterizationStateCreateInfoBuilder::new()
-            .cull_mode(cull_mode)
-            .depth_clamp_enable(depth_clamp)
-            .depth_bias_constant_factor(config.depth_bias_constant_factor)
-            .build();
-        Ok(rasterizer)
-    }
+    // TODO: Change this to edit an already existing PipelineRasterizationStateCreateInfoBuilder
+    // pub fn build_rasterizer<'a>(self) -> Result<(), Error> {
+    //     // let ConfigureRasterizer {cull_mode, depth_bias, depth_bias_clamp, depth_bias_constant_factor, depth_bias_slope_factor, depth_clamp, front_face, line_width, polygon_mode, rasterizer_discard} = self;
+    //     // TODO: Unwrap all the fields or return None?
+    //     let config = self;
+    //     let cull_mode = config.cull_mode.ok_or(Error::new(ErrorKind::InvalidPipelineConfig, None))?;
+    //     let depth_clamp = config.depth_clamp.ok_or(Error::new(ErrorKind::InvalidPipelineConfig, None))?;
+    //     // let depth_bias_constant_factor = self.depth_bias_constant_factor.ok_or(Error::InvalidRasterizationConfig("Depth Clamp was not set during the fixed function rasterization stage", self))?;
+    //     let rasterizer = vk::PipelineRasterizationStateCreateInfoBuilder::new()
+    //         .cull_mode(cull_mode)
+    //         .depth_clamp_enable(depth_clamp)
+    //         .depth_bias_constant_factor(config.depth_bias_constant_factor);
+    //     Ok(rasterizer)
+    // }
 }

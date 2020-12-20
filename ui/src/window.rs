@@ -4,6 +4,7 @@ use super::{
 };
 use std::os::raw::c_void;
 use erupt::vk1_0::VertexInputRate;
+use renderer::AttributeFormat;
 use winit;
 
 
@@ -137,18 +138,21 @@ impl Window {
         }).expect("Failed to configure shaders")
         .configure_vertex_input(&mut|configure_input|{
             configure_input.add_binding(0,erupt::vk1_0::VertexInputRate::VERTEX, 1)
-                .add_attribute(0, erupt::vk1_0::Format::A2B10G10R10_SINT_PACK32)
-                .add_attribute(1, erupt::vk1_0::Format::A2B10G10R10_SINT_PACK32);
+                .add_attribute(0, 0, AttributeFormat::Float)
+                .add_attribute(1, 0, AttributeFormat::Float);
             // configure_input.add_binding(1, VertexInputRate::INSTANCE, 8)
             //     .add_attribute(2, erupt::vk1_0::Format::R8G8B8_SRGB);
         })
-        .configure_input_assembely(erupt::vk1_0::PrimitiveTopology::TRIANGLE_LIST, false)
-        .configure_viewport(&mut|viewports|{
+        .configure_input_assembely(&mut |settings|{
+            settings.set_topology(erupt::vk1_0::PrimitiveTopology::TRIANGLE_LIST);
+            settings.set_restart(false);
+        })
+        .configure_viewport(&mut|viewports| {
             // TODO: Support multiple viewports as well as some way to check if its available
             viewports.create_viewport(0.0, 0.0, presenter.get_width() as f32, presenter.get_height() as f32, 0.0, 1.0, 0, 0, presenter.get_width(), presenter.get_height())
         })
-        .configure_rasterizer(&mut|config|{
-
+        .configure_rasterizer(&mut|settings| {
+            
         });
         
         // TODO: This will be multiple renderpasses and should be contained in a frame graph

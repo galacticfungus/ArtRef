@@ -12,17 +12,8 @@ pub use std::ffi::CString;
 
 /// Configure the rasterization options
 #[derive(Debug, Clone)]
-pub struct RasterizerSettings {
-    depth_clamp: Option<bool>,
-    rasterizer_discard: Option<bool>,
-    polygon_mode: Option<vk::PolygonMode>,
-    line_width: Option<f32>,
-    cull_mode: Option<vk::CullModeFlags>,
-    front_face: Option<vk::FrontFace>,
-    depth_bias: Option<bool>,
-    depth_bias_constant_factor: f32,
-    depth_bias_clamp: f32,
-    depth_bias_slope_factor: f32,
+pub struct RasterizerSettings<'a, 'b: 'a> {
+    settings: &'a vk::PipelineRasterizationStateCreateInfoBuilder<'b>,
 }
 
 pub struct ConfigureShaders<'a> {
@@ -56,4 +47,31 @@ pub struct ConfigurePipeline<'a> {
     vertex_binding_descriptions: Vec<vk::VertexInputBindingDescription>,
     vertex_input_info: Option<vk::PipelineVertexInputStateCreateInfo>,
     configured_shaders: Option<ConfigureShaders<'a>>,
+    rasterizer_configuration: Option<vk::PipelineRasterizationStateCreateInfoBuilder<'a>>
+}
+
+pub struct InputAssembelySettings<'a,'b: 'a> {
+    pipeline_assembely: &'a vk::PipelineInputAssemblyStateCreateInfoBuilder<'b>,
+}
+
+pub struct VertexBinding<'a> {
+    binding: &'a vk::VertexInputBindingDescription,
+    attributes: &'a mut Vec<vk::VertexInputAttributeDescription>,
+}
+
+pub enum AttributeFormat {
+    Float,
+    Vec2,
+    Vec3,
+    Vec4,
+    Double,
+    UVec2,
+    UVec3,
+    UVec4,
+    SVec2,
+    SVec3,
+    SVec4,
+    DVec2,
+    DVec3,
+    DVec4,
 }

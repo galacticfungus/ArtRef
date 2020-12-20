@@ -16,6 +16,7 @@ impl<'a> ConfigurePipeline<'a> {
             vertex_binding_descriptions: Vec::new(),
             vertex_input_info: None,
             configured_shaders: None,
+            rasterizer_configuration: None,
         }
     }
 

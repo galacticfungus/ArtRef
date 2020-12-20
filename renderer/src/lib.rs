@@ -32,6 +32,7 @@ pub use device::VulkanDevice;
 pub use presenter::{Presenter, ConfigurePresenter, PresentMode, SurfaceFormat, SurfaceColourSpace, SwapchainExtent, SwapchainImageCount};
 pub use config::{ConfigureDevice, DeviceExtensions};
 pub use renderpass::Renderpass;
+pub use pipeline::AttributeFormat;
 
 use erupt::vk1_0 as vk;
 use erupt::extensions::khr_surface;

@@ -1,4 +1,4 @@
-use super::{RasterizerSettings, VertexInputSettings, ViewportManager};
+use super::{RasterizerSettings, VertexInputSettings, ViewportManager, InputAssembelySettings};
 use erupt::vk1_0 as vk;
 pub trait ConfigureVertexInput {
     fn configure_vertex_input(
@@ -10,8 +10,7 @@ pub trait ConfigureVertexInput {
 pub trait ConfigureInputAssembely {
     fn configure_input_assembely(
         &mut self,
-        topology: vk::PrimitiveTopology,
-        enabled_restart: bool,
+        configure_assembely: &mut FnMut(&mut InputAssembelySettings),
     ) -> &mut dyn ConfigureViewport;
 }
 

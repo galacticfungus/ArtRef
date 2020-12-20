@@ -1,8 +1,7 @@
 use crate::Feature;
 
 use super::traits::{ConfigureInputAssembely, ConfigureVertexInput};
-use super::ConfigurePipeline;
-use super::VertexInputSettings;
+use super::{ConfigurePipeline, VertexInputSettings, AttributeFormat, VertexBinding};
 
 use erupt::vk1_0 as vk;
 use erupt::vk1_0::Format as Format;
@@ -24,31 +23,12 @@ impl<'a> ConfigureVertexInput for ConfigurePipeline<'a> {
         configure_input(&mut config);
 
         // We create a vk::PipelineVertexInputStateCreateInfo from the data this function creates
-        // TODO: We cant create this struct now as references are destroyed when we move self
-        // TODO: One option is to box the underlying datastructres that place that in self then valid references would remain valid as we only move a smart pointer
         // let b = vk::PipelineVertexInputStateCreateInfoBuilder::new()
         //     .vertex_attribute_descriptions(self.vertex_attribute_descriptions.as_slice())
         //     .vertex_binding_descriptions(self.vertex_binding_descriptions.as_slice());
         // self.vertex_input_info = Some(b);
         self
     }
-}
-
-pub enum AttributeFormat {
-    Float,
-    Vec2,
-    Vec3,
-    Vec4,
-    Double,
-    UVec2,
-    UVec3,
-    UVec4,
-    SVec2,
-    SVec3,
-    SVec4,
-    DVec2,
-    DVec3,
-    DVec4,
 }
 
 impl AttributeFormat {
@@ -78,10 +58,7 @@ impl From<AttributeFormat> for vk::Format {
     }
 }
 
-pub struct VertexBinding<'a> {
-    binding: &'a vk::VertexInputBindingDescription,
-    attributes: &'a mut Vec<vk::VertexInputAttributeDescription>,
-}
+
 
 impl<'a> VertexBinding<'a> {
     pub fn new(binding: &'a vk::VertexInputBindingDescription, attributes: &'a mut Vec<vk::VertexInputAttributeDescription>) -> VertexBinding<'a> {
