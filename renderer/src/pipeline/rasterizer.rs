@@ -1,6 +1,6 @@
 use crate::error;
 
-use super::traits::ConfigureRasterizer;
+use super::traits::{ConfigureMultisampling, ConfigureRasterizer};
 use super::{ConfigurePipeline, RasterizerSettings};
 use erupt::vk1_0 as vk;
 use error::{Error, ErrorKind};
@@ -9,13 +9,13 @@ impl<'a> ConfigureRasterizer for ConfigurePipeline<'a> {
     fn configure_rasterizer(
         &mut self,
         configure_rasterizer: &mut dyn FnMut(&mut RasterizerSettings),
-    ) {
+    ) -> &mut dyn ConfigureMultisampling {
         let mut builder = vk::PipelineRasterizationStateCreateInfoBuilder::new();
         // Many of these options require the use of device features
         let mut config = RasterizerSettings::new(&mut builder);
         configure_rasterizer(&mut config);
-
         self.rasterizer_configuration = Some(builder);
+        self
     }
 }
 

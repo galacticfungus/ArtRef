@@ -32,43 +32,6 @@ impl<'a> ConfigurePipeline<'a> {
         Ok(self)
     }
 
-    
-
-    // pub fn configure_multisampling(mut self) -> Self {
-    //     // TODO: Closure that allows specifying options but also passes in device limits to allow for configuration
-    //     let b = vk::PipelineMultisampleStateCreateInfoBuilder::new();
-    //     // VkPhysicalDeviceLimits
-    //     b.rasterization_samples(vk::SampleCountFlagBits::_64);
-    //     //         VkPipelineMultisampleStateCreateInfo multisampling{};
-    //     // multisampling.sampleShadingEnable = VK_FALSE;
-    //     // multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-    //     // multisampling.minSampleShading = 1.0f; // Optional
-    //     // multisampling.pSampleMask = nullptr; // Optional
-    //     // multisampling.alphaToCoverageEnable = VK_FALSE; // Optional
-    //     // multisampling.alphaToOneEnable = VK_FALSE; // Optional
-    //     self
-    // }
-
-    // pub fn configure_depth_stencil_tests(mut self) -> Self {
-    //     // VkPipelineDepthStencilStateCreateInfo
-    //     // TODO: Much like configure multisampling
-    //     let b = vk::PipelineDepthStencilStateCreateInfoBuilder::new();
-    //     self
-    // }
-
-    // pub fn configure_color_blend(&self) -> &Self {
-    //     // VkPipelineColorBlendAttachmentState colorBlendAttachment{};
-    //     // colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-    //     // colorBlendAttachment.blendEnable = VK_FALSE;
-    //     // colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE; // Optional
-    //     // colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO; // Optional
-    //     // colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD; // Optional
-    //     // colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE; // Optional
-    //     // colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO; // Optional
-    //     // colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD; // Optional
-    //     self
-    // }
-
     // pub fn configure_dynamic_state(mut self) -> Self {
     //     // TODO: closure that passes in a dynamic state object where you can request certain dynamic states
     //     //         VkDynamicState dynamicStates[] = {

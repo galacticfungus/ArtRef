@@ -1,9 +1,9 @@
-use super::{MultiSampleSettings, ConfigurePipeline};
-use super::traits::ConfigureMultisampling;
+use super::{ConfigurePipeline, MultiSampleSettings};
+use super::traits::{ConfigureMultisampling, ConfigureDepthStencil};
 use erupt::vk1_0 as vk;
 
 impl ConfigureMultisampling for ConfigurePipeline<'_> {
-    fn configure_multisampling(&mut self, configure_multisampling: &mut dyn FnMut(&mut MultiSampleSettings)) {
+    fn configure_multisampling(&mut self, configure_multisampling: &mut dyn FnMut(&mut MultiSampleSettings)) -> &mut dyn ConfigureDepthStencil {
         let mut multisample_config = vk::PipelineMultisampleStateCreateInfoBuilder::new();
         let mut sample_masks = Vec::new();
         let mut settings = MultiSampleSettings::new(&mut multisample_config, &mut sample_masks);
@@ -11,6 +11,7 @@ impl ConfigureMultisampling for ConfigurePipeline<'_> {
         self.multisample_config = Some(multisample_config);
         self.sample_masks = sample_masks;
         self.multisample_config.unwrap().sample_mask(self.sample_masks.as_slice());
+        self
     }
 }
 

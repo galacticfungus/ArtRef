@@ -6,6 +6,8 @@ mod vertex_input;
 mod viewport;
 mod config;
 mod multisampling;
+mod depth_stencil;
+mod color_blending;
 
 use erupt::vk1_0 as vk;
 
@@ -82,4 +84,12 @@ pub enum AttributeFormat {
 pub struct MultiSampleSettings<'a, 'b: 'a> {
     settings: &'a vk::PipelineMultisampleStateCreateInfoBuilder<'b>,
     masks: &'a mut Vec<vk::SampleMask>,
+}
+
+pub struct DepthStencilSettings<'a, 'b: 'a> {
+    settings: &'a vk::PipelineDepthStencilStateCreateInfoBuilder<'b>,
+}
+
+pub struct ColorBlendingSettings<'a, 'b: 'a> {
+    settings: &'a vk::PipelineColorBlendStateCreateInfoBuilder<'b>,
 }
