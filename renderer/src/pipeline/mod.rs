@@ -5,6 +5,7 @@ mod shaders;
 mod vertex_input;
 mod viewport;
 mod config;
+mod multisampling;
 
 use erupt::vk1_0 as vk;
 
@@ -47,7 +48,9 @@ pub struct ConfigurePipeline<'a> {
     vertex_binding_descriptions: Vec<vk::VertexInputBindingDescription>,
     vertex_input_info: Option<vk::PipelineVertexInputStateCreateInfo>,
     configured_shaders: Option<ConfigureShaders<'a>>,
-    rasterizer_configuration: Option<vk::PipelineRasterizationStateCreateInfoBuilder<'a>>
+    rasterizer_configuration: Option<vk::PipelineRasterizationStateCreateInfoBuilder<'a>>,
+    multisample_config: Option<vk::PipelineMultisampleStateCreateInfoBuilder<'a>>,
+    sample_masks: Vec<vk::SampleMask>,
 }
 
 pub struct InputAssembelySettings<'a,'b: 'a> {
@@ -74,4 +77,9 @@ pub enum AttributeFormat {
     DVec2,
     DVec3,
     DVec4,
+}
+
+pub struct MultiSampleSettings<'a, 'b: 'a> {
+    settings: &'a vk::PipelineMultisampleStateCreateInfoBuilder<'b>,
+    masks: &'a mut Vec<vk::SampleMask>,
 }

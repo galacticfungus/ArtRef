@@ -17,6 +17,8 @@ impl<'a> ConfigurePipeline<'a> {
             vertex_input_info: None,
             configured_shaders: None,
             rasterizer_configuration: None,
+            multisample_config: None,
+            sample_masks: Vec::new(),
         }
     }
 
@@ -30,43 +32,7 @@ impl<'a> ConfigurePipeline<'a> {
         Ok(self)
     }
 
-    // pub fn configure_viewport<F>(mut self, create_viewport: F) -> Self
-    // where
-    //     F: Fn(&mut ViewportManager) -> (),
-    // {
-    //     // TODO: It's possible to create multiple viewports but its locked behind a gpu feature,
-    //     // TODO: Each viewport has a scissor associated with it
-    //     let mut mng = ViewportManager::new();
-    //     create_viewport(&mut mng);
-
-    //     // VkPipelineViewportStateCreateInfo viewportState{};
-    //     // viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-    //     // viewportState.viewportCount = 1;
-    //     // viewportState.pViewports = &viewport;
-    //     // viewportState.scissorCount = 1;
-    //     // viewportState.pScissors = &scissor;
-    //     // TODO: Verify a viewport was created ie if len is 0 then leave it as None?
-    //     self.viewports_to_create = Some(mng.viewports);
-    //     self
-    // }
-
-    // pub fn configure_rasterizer<F>(mut self, configure_rasterizer: F) -> Self where F: FnOnce(&mut ConfigureRasterizer)  {
-    //     // Many of these options require the use of device features
-    //     let mut config = ConfigureRasterizer::new();
-    //     configure_rasterizer(&mut config);
-        
-    //     let builder = vk::PipelineRasterizationStateCreateInfoBuilder::new();
-    //     // TODO: So a helper struct that can determine if certain options are available and allow customizing those options conditionally
-    //     // TODO: Although you are more likely to create a different graphics pipe line altogether that modify one conditionally?
-    //     config.build_rasterizer();
-    //     builder.depth_bias_clamp(0.0);
-    //     builder.depth_bias_enable(false);
-    //     builder.polygon_mode(vk::PolygonMode::FILL);
-    //     builder.cull_mode(vk::CullModeFlags::BACK);
-    //     builder.rasterizer_discard_enable(false);
-    //     builder.line_width(1.);
-    //     self
-    // }
+    
 
     // pub fn configure_multisampling(mut self) -> Self {
     //     // TODO: Closure that allows specifying options but also passes in device limits to allow for configuration

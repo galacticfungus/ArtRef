@@ -1,4 +1,4 @@
-use super::{RasterizerSettings, VertexInputSettings, ViewportManager, InputAssembelySettings};
+use super::{RasterizerSettings, VertexInputSettings, ViewportManager, InputAssembelySettings, MultiSampleSettings};
 use erupt::vk1_0 as vk;
 pub trait ConfigureVertexInput {
     fn configure_vertex_input(
@@ -26,4 +26,8 @@ pub trait ConfigureRasterizer {
         &mut self,
         configure_rasterizer: &mut dyn FnMut(&mut RasterizerSettings),
     );
+}
+
+pub trait ConfigureMultisampling {
+    fn configure_multisampling(&mut self, configure_multisampling: &mut dyn FnMut(&mut MultiSampleSettings));
 }
