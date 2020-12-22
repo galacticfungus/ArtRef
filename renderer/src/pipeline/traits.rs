@@ -1,6 +1,6 @@
 use super::{
-    ColorBlendingSettings, DepthStencilSettings, InputAssembelySettings, MultiSampleSettings,
-    RasterizerSettings, VertexInputSettings, ViewportManager,
+    ColorBlendingSettings, DepthStencilSettings, DynamicStateSettings, InputAssembelySettings,
+    LayoutSettings, MultiSampleSettings, RasterizerSettings, VertexInputSettings, ViewportManager,
 };
 use erupt::vk1_0 as vk;
 pub trait ConfigureVertexInput {
@@ -49,5 +49,16 @@ pub trait ConfigureColorBlending {
     fn configure_blending(
         &mut self,
         configure_blending: &mut dyn FnMut(&mut ColorBlendingSettings),
-    );
+    ) -> &mut dyn ConfigureDynamicState;
+}
+
+pub trait ConfigureDynamicState {
+    fn configure_dynamic_state(
+        &mut self,
+        configure_dynamic_state: &mut dyn FnMut(&mut DynamicStateSettings),
+    ) -> &mut dyn ConfigureLayout;
+}
+
+pub trait ConfigureLayout {
+    fn configure_layout(&mut self, configure_layout: &mut dyn FnMut(&mut LayoutSettings));
 }

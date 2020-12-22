@@ -1,11 +1,11 @@
-use super::{traits::ConfigureColorBlending, ColorBlendingSettings, ColorBlendingType};
+use super::{ColorBlendingSettings, ColorBlendingType, traits::{ConfigureColorBlending, ConfigureDynamicState}};
 use crate::ConfigurePipeline;
 use erupt::vk1_0 as vk;
 impl<'a> ConfigureColorBlending for ConfigurePipeline<'a> {
     fn configure_blending(
         &mut self,
         configure_blending: &mut dyn FnMut(&mut ColorBlendingSettings),
-    ) {
+    ) -> &mut dyn ConfigureDynamicState {
         let mut pipeline_blend_settings = vk::PipelineColorBlendStateCreateInfoBuilder::new();
         let mut blending_settings = ColorBlendingSettings::new(&mut pipeline_blend_settings);
 
@@ -34,6 +34,7 @@ impl<'a> ConfigureColorBlending for ConfigurePipeline<'a> {
             self.color_blending = Some(blend);
         }
         // TODO: Warn when assigning values to logic op but not enabling bitwise color blending
+        self
     }
 }
 

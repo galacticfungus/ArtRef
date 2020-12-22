@@ -33,35 +33,9 @@ impl<'a> ConfigurePipeline<'a> {
         Ok(self)
     }
 
-    // pub fn configure_dynamic_state(mut self) -> Self {
-    //     // TODO: closure that passes in a dynamic state object where you can request certain dynamic states
-    //     //         VkDynamicState dynamicStates[] = {
-    //     //     VK_DYNAMIC_STATE_VIEWPORT,
-    //     //     VK_DYNAMIC_STATE_LINE_WIDTH
-    //     // };
-    //     let b = vk::PipelineDynamicStateCreateInfoBuilder::new();
-    //     // VkPipelineDynamicStateCreateInfo dynamicState{};
-    //     // dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-    //     // dynamicState.dynamicStateCount = 2;
-    //     // dynamicState.pDynamicStates = dynamicStates;
-    //     self
-    // }
+    
 
-    // pub fn configure_layout(mut self) -> Self {
-    //     // TODO: Create the uniform variables - ie globals that are passed to the shaders
-
-    //     // VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-    //     // pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    //     // pipelineLayoutInfo.setLayoutCount = 0; // Optional
-    //     // pipelineLayoutInfo.pSetLayouts = nullptr; // Optional
-    //     // pipelineLayoutInfo.pushConstantRangeCount = 0; // Optional
-    //     // pipelineLayoutInfo.pPushConstantRanges = nullptr; // Optional
-
-    //     // if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
-    //     //  throw std::runtime_error("failed to create pipeline layout!");
-    //     // }
-    //     self
-    // }
+    
 
     // pub fn create_pipeline(mut self) -> Self {
     //     // TODO: Takes in a render pass as a reference and returns a pipeline object

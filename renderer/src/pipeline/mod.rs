@@ -8,6 +8,8 @@ mod shaders;
 mod traits;
 mod vertex_input;
 mod viewport;
+mod layout;
+mod dynamic_state;
 
 use erupt::vk1_0 as vk;
 
@@ -104,4 +106,14 @@ pub enum ColorBlendingType<'a> {
         [f32; 4],
     ),
     BitwiseBlending(vk::PipelineColorBlendStateCreateInfoBuilder<'a>),
+}
+
+pub struct DynamicStateSettings<'a, 'b: 'a> {
+    pipeline_settings: &'a mut vk::PipelineDynamicStateCreateInfoBuilder<'b>,
+    dynamic_states: &'a mut Vec<vk::DynamicState>,
+}
+
+pub struct LayoutSettings<'a, 'b: 'a> {
+    pipeline_settings: &'a mut vk::PipelineLayoutCreateInfoBuilder<'b>,
+    push_constants: &'a mut Vec<vk::PushConstantRangeBuilder<'b>>,
 }
