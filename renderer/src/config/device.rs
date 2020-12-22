@@ -7,7 +7,7 @@ use super::{
     QueueManager,
 };
 use crate::error::{Error, ErrorKind};
-use crate::{Version, VulkanDevice, SelectedDevice};
+use crate::{SelectedDevice, Version, VulkanDevice};
 
 // Notes from Nvidia: Don’t overlap compute work on the graphics queue with compute work on a
 // dedicated asynchronous compute queue. This may lead to gaps in execution of the
@@ -18,8 +18,19 @@ impl<'a> ConfigureDevice<'a> {
         instance: &'a erupt::InstanceLoader,
         selected_device: SelectedDevice,
     ) -> ConfigureDevice {
-        let SelectedDevice {api_version, device_handle, device_features, queue_families, driver_version, vendor_id, device_id, device_name, device_type, available_extensions} = selected_device;
-        
+        let SelectedDevice {
+            api_version,
+            device_handle,
+            device_features,
+            queue_families,
+            driver_version,
+            vendor_id,
+            device_id,
+            device_name,
+            device_type,
+            available_extensions,
+        } = selected_device;
+
         ConfigureDevice {
             instance,
             device_handle,
@@ -61,7 +72,10 @@ impl<'a> ConfigureDevice<'a> {
             gpu_feature.enable();
             Ok(self)
         } else {
-            Err(Error::new(ErrorKind::MissingFeature(requested_feature), None))
+            Err(Error::new(
+                ErrorKind::MissingFeature(requested_feature),
+                None,
+            ))
         }
     }
 
@@ -236,7 +250,7 @@ impl<'a> std::fmt::Debug for ConfigureDevice<'a> {
 //             enabled_features: erupt::vk1_0::PhysicalDeviceFeatures::default(),
 //             queues_to_create: Vec::new(),
 //             render_queues: None,
-//             instance: 
+//             instance:
 //         }
 //     }
 // }

@@ -6,13 +6,12 @@ use erupt::vk1_0 as vk;
 
 use super::Gpu;
 
-use std::ffi::CStr;
-use std::collections::HashSet;
-use crate::{PciVendor, QueueFamily, Features, DeviceExtensions};
-use erupt::extensions::khr_surface as surface;
-use crate::{ExtensionManager, Version};
 use crate::error;
-
+use crate::{DeviceExtensions, Features, PciVendor, QueueFamily};
+use crate::{ExtensionManager, Version};
+use erupt::extensions::khr_surface as surface;
+use std::collections::HashSet;
+use std::ffi::CStr;
 
 pub struct DeviceSelector<'a> {
     instance: &'a erupt::InstanceLoader,
@@ -34,7 +33,7 @@ pub trait SupportDeviceFiltering {
 /// This trait is implemented for free when SupportDeviceFiltering is implemented
 /// Note that these filters work by collecting the index of items to be removed
 pub trait FiltersDevices<'a> {
-    // TODO: explicitly prefer a physical device that supports drawing and presentation in the same queue 
+    // TODO: explicitly prefer a physical device that supports drawing and presentation in the same queue
     fn has_queue(&'a mut self, operations_supported: vk::QueueFlags, must_present: bool);
     fn requires_queue(
         &'a mut self,
@@ -44,8 +43,12 @@ pub trait FiltersDevices<'a> {
     fn is_discrete(&'a mut self);
     fn is_integrated(&'a mut self);
     fn has_feature(&'a mut self, feature: &Features);
-    fn required_device_extensions<F>(&'a mut self, select_extensions: F) -> Result<(), error::Error>
-        where F: Fn(&mut ExtensionManager<DeviceExtensions>) -> ();
+    fn required_device_extensions<F>(
+        &'a mut self,
+        select_extensions: F,
+    ) -> Result<(), error::Error>
+    where
+        F: Fn(&mut ExtensionManager<DeviceExtensions>) -> ();
 }
 
 pub struct DeviceFilter {

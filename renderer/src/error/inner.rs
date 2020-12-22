@@ -1,15 +1,14 @@
-use super::{ErrorKind, InnerError, Error, DisplayDebug, Context};
+use super::{Context, Error, ErrorKind, InnerError};
 
 impl InnerError {
     pub fn new(kind: ErrorKind, source: Option<Error>) -> InnerError {
-        
         InnerError {
             kind,
             context: Context::new(),
             source,
         }
     }
-    
+
     pub fn kind(&self) -> &ErrorKind {
         &self.kind
     }

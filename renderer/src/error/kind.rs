@@ -6,15 +6,23 @@ impl PartialEq for ErrorKind {
             // TODO: Macro for this
             // It would have been easier to impl PartialEq for the types that are parameters, but can't impl PartialEq for CString
             // TODO: Ideally we remove the need to compare these but users of the library probably want to check the results
-            (ErrorKind::DeviceExtensionsNotFound(_),  ErrorKind::DeviceExtensionsNotFound(_)) => true,
-            (ErrorKind::ExtensionNotFound(_),  ErrorKind::ExtensionNotFound(_)) => true,
-            (ErrorKind::FailedToRecreateSurface,  ErrorKind::FailedToRecreateSurface) => true,
-            (ErrorKind::InitializationFailed,  ErrorKind::InitializationFailed) => true,
-            (ErrorKind::InstanceExtensionsNotFound(_),  ErrorKind::InstanceExtensionsNotFound(_)) => true,
-            (ErrorKind::InvalidPipelineConfig,  ErrorKind::InvalidPipelineConfig) => true,
+            (ErrorKind::DeviceExtensionsNotFound(_), ErrorKind::DeviceExtensionsNotFound(_)) => {
+                true
+            }
+            (ErrorKind::ExtensionNotFound(_), ErrorKind::ExtensionNotFound(_)) => true,
+            (ErrorKind::FailedToRecreateSurface, ErrorKind::FailedToRecreateSurface) => true,
+            (ErrorKind::InitializationFailed, ErrorKind::InitializationFailed) => true,
+            (
+                ErrorKind::InstanceExtensionsNotFound(_),
+                ErrorKind::InstanceExtensionsNotFound(_),
+            ) => true,
+            (ErrorKind::InvalidPipelineConfig, ErrorKind::InvalidPipelineConfig) => true,
             (ErrorKind::LayerNotFound(_), ErrorKind::LayerNotFound(_)) => true,
             (ErrorKind::MissingFeature(_), ErrorKind::MissingFeature(_)) => true,
-            (ErrorKind::MissingRequiredDeviceExtensions(_), ErrorKind::MissingRequiredDeviceExtensions(_)) => true,
+            (
+                ErrorKind::MissingRequiredDeviceExtensions(_),
+                ErrorKind::MissingRequiredDeviceExtensions(_),
+            ) => true,
             (ErrorKind::NoDevicesCanPresent, ErrorKind::NoDevicesCanPresent) => true,
             (ErrorKind::NoDevicesFound, ErrorKind::NoDevicesFound) => true,
             (ErrorKind::NoGraphicsQueue, ErrorKind::NoGraphicsQueue) => true,
@@ -22,8 +30,13 @@ impl PartialEq for ErrorKind {
             (ErrorKind::OutOfDeviceMemory, ErrorKind::OutOfDeviceMemory) => true,
             (ErrorKind::OutOfHostMemory, ErrorKind::OutOfHostMemory) => true,
             (ErrorKind::SurfaceLost, ErrorKind::SurfaceLost) => true,
-            (ErrorKind::SwapchainConfigurationMissing, ErrorKind::SwapchainConfigurationMissing) => true,
-            (ErrorKind::VulkanApiError(error_a), ErrorKind::VulkanApiError(error_b)) => error_a.eq(error_b),
+            (
+                ErrorKind::SwapchainConfigurationMissing,
+                ErrorKind::SwapchainConfigurationMissing,
+            ) => true,
+            (ErrorKind::VulkanApiError(error_a), ErrorKind::VulkanApiError(error_b)) => {
+                error_a.eq(error_b)
+            }
             (ErrorKind::VulkanNotInstalled, ErrorKind::VulkanNotInstalled) => true,
             _ => false,
         }
@@ -101,7 +114,6 @@ impl std::fmt::Display for ErrorKind {
                     // TODO: Report on why the name could not be retrieved in the context?
                     f.write_fmt(format_args!("Failed to get the device extensions for a device, the devices name could not be retrieved"))
                 }
-                
             },
             ErrorKind::VulkanNotInstalled => f.write_fmt(format_args!("Failed to load the Vulkan library, is Vulkan not installed?")),
             ErrorKind::InvalidShaderEntryMethodName(name) => f.write_fmt(format_args!("An invalid C string was used as the entry name for a shader, name was {:?}", name))

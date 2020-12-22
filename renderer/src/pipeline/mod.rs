@@ -1,13 +1,13 @@
-mod traits;
+mod color_blending;
+mod config;
+mod depth_stencil;
 mod input_assembely;
+mod multisampling;
 mod rasterizer;
 mod shaders;
+mod traits;
 mod vertex_input;
 mod viewport;
-mod config;
-mod multisampling;
-mod depth_stencil;
-mod color_blending;
 
 use erupt::vk1_0 as vk;
 
@@ -53,9 +53,10 @@ pub struct ConfigurePipeline<'a> {
     rasterizer_configuration: Option<vk::PipelineRasterizationStateCreateInfoBuilder<'a>>,
     multisample_config: Option<vk::PipelineMultisampleStateCreateInfoBuilder<'a>>,
     sample_masks: Vec<vk::SampleMask>,
+    color_blending: Option<ColorBlendingType<'a>>,
 }
 
-pub struct InputAssembelySettings<'a,'b: 'a> {
+pub struct InputAssembelySettings<'a, 'b: 'a> {
     pipeline_assembely: &'a vk::PipelineInputAssemblyStateCreateInfoBuilder<'b>,
 }
 
@@ -91,5 +92,16 @@ pub struct DepthStencilSettings<'a, 'b: 'a> {
 }
 
 pub struct ColorBlendingSettings<'a, 'b: 'a> {
-    settings: &'a vk::PipelineColorBlendStateCreateInfoBuilder<'b>,
+    pipeline_settings: &'a vk::PipelineColorBlendStateCreateInfoBuilder<'b>,
+    attachments: Vec<vk::PipelineColorBlendAttachmentStateBuilder<'b>>,
+    constants: [f32; 4],
+}
+
+pub enum ColorBlendingType<'a> {
+    BlendWithAttachments(
+        vk::PipelineColorBlendStateCreateInfoBuilder<'a>,
+        Vec<vk::PipelineColorBlendAttachmentStateBuilder<'a>>,
+        [f32; 4],
+    ),
+    BitwiseBlending(vk::PipelineColorBlendStateCreateInfoBuilder<'a>),
 }

@@ -2,11 +2,13 @@ mod config;
 mod presenter;
 mod types;
 
-use winit::window::Window;
 use erupt::extensions::khr_surface as surface;
 use erupt::vk1_0 as vk;
+use winit::window::Window;
 
-pub use types::{PresentMode, SurfaceColourSpace, SurfaceFormat, SwapchainExtent, SwapchainImageCount};
+pub use types::{
+    PresentMode, SurfaceColourSpace, SurfaceFormat, SwapchainExtent, SwapchainImageCount,
+};
 
 pub fn create_surface(instance: &erupt::InstanceLoader, window: &Window) -> surface::SurfaceKHR {
     // Gets the surface capabilities that are selected when creating a swapchain
@@ -41,7 +43,7 @@ pub struct ConfigurePresenter {
     // Create the Framebuffers
 }
 
-/// Responsible for maintaining the swapchain and its backing imageviews and framebuffers, 
+/// Responsible for maintaining the swapchain and its backing imageviews and framebuffers,
 /// creating the surface and presenting the image to the surface
 pub struct Presenter {
     surface: surface::SurfaceKHR,

@@ -21,8 +21,10 @@ impl<T> ExtensionManager<T> {
     }
 }
 
-impl<T> std::fmt::Debug for ExtensionManager<T> 
-where T: std::fmt::Debug {
+impl<T> std::fmt::Debug for ExtensionManager<T>
+where
+    T: std::fmt::Debug,
+{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
         for extension in self.extensions_to_load.iter() {
             f.write_fmt(format_args!("{:?},", extension))?;

@@ -2,8 +2,8 @@ use crate::error;
 
 use super::traits::{ConfigureMultisampling, ConfigureRasterizer};
 use super::{ConfigurePipeline, RasterizerSettings};
-use erupt::vk1_0 as vk;
 use error::{Error, ErrorKind};
+use erupt::vk1_0 as vk;
 
 impl<'a> ConfigureRasterizer for ConfigurePipeline<'a> {
     fn configure_rasterizer(
@@ -19,7 +19,7 @@ impl<'a> ConfigureRasterizer for ConfigurePipeline<'a> {
     }
 }
 
-impl<'a,'b: 'a> RasterizerSettings<'a, 'b> {
+impl<'a, 'b: 'a> RasterizerSettings<'a, 'b> {
     // Many of these functions require a GPU feature to have been enabled
     /// Determines how fragments are generated for geometry.
     pub fn polygon_mode(&mut self, polygon_mode: vk::PolygonMode) {
@@ -53,7 +53,8 @@ impl<'a,'b: 'a> RasterizerSettings<'a, 'b> {
     }
 
     pub fn depth_bias_constant_factor(&mut self, depth_bias_constant_factor: f32) {
-        self.settings.depth_bias_constant_factor(depth_bias_constant_factor);
+        self.settings
+            .depth_bias_constant_factor(depth_bias_constant_factor);
     }
 
     pub fn depth_bias_clamp(&mut self, depth_bias_clamp: f32) {
@@ -61,10 +62,13 @@ impl<'a,'b: 'a> RasterizerSettings<'a, 'b> {
     }
 
     pub fn depth_bias_slope_factor(&mut self, depth_bias_slope_factor: f32) {
-        self.settings.depth_bias_slope_factor(depth_bias_slope_factor);
+        self.settings
+            .depth_bias_slope_factor(depth_bias_slope_factor);
     }
 
-    pub fn new(rasterizer_settings: &'a mut vk::PipelineRasterizationStateCreateInfoBuilder<'b>) -> RasterizerSettings<'a, 'b> {
+    pub fn new(
+        rasterizer_settings: &'a mut vk::PipelineRasterizationStateCreateInfoBuilder<'b>,
+    ) -> RasterizerSettings<'a, 'b> {
         RasterizerSettings {
             settings: rasterizer_settings,
         }

@@ -39,7 +39,7 @@ impl QueueFamily {
             can_present,
         }
     }
-    
+
     // Returns true if this queue supports graphics
     pub fn supports_graphics(&self) -> bool {
         if self.flags & vk::QueueFlags::GRAPHICS == vk::QueueFlags::GRAPHICS {
@@ -162,7 +162,12 @@ impl RendererQueuesBuilder {
     }
 
     pub fn build(self) -> RendererQueues {
-        let RendererQueuesBuilder {graphics_queues, transfer_queues, sparse_queues, compute_queues} = self;
+        let RendererQueuesBuilder {
+            graphics_queues,
+            transfer_queues,
+            sparse_queues,
+            compute_queues,
+        } = self;
         RendererQueues {
             graphics_queues,
             transfer_queues,
@@ -171,23 +176,53 @@ impl RendererQueuesBuilder {
         }
     }
 
-    pub fn create_graphics_queue(&mut self, family_index: u32, priority: f32, index_to_use: u32, can_present: bool) {
-        let queue = OperationQueue::new(family_index, priority, vk::QueueFlags::GRAPHICS, index_to_use, can_present);
+    pub fn create_graphics_queue(
+        &mut self,
+        family_index: u32,
+        priority: f32,
+        index_to_use: u32,
+        can_present: bool,
+    ) {
+        let queue = OperationQueue::new(
+            family_index,
+            priority,
+            vk::QueueFlags::GRAPHICS,
+            index_to_use,
+            can_present,
+        );
         self.graphics_queues.push(queue);
     }
 
     pub fn create_transfer_queue(&mut self, family_index: u32, priority: f32, index_to_use: u32) {
-        let queue = OperationQueue::new(family_index, priority, vk::QueueFlags::TRANSFER, index_to_use, false);
+        let queue = OperationQueue::new(
+            family_index,
+            priority,
+            vk::QueueFlags::TRANSFER,
+            index_to_use,
+            false,
+        );
         self.transfer_queues.push(queue);
     }
 
     pub fn create_compute_queue(&mut self, family_index: u32, priority: f32, index_to_use: u32) {
-        let queue = OperationQueue::new(family_index, priority, vk::QueueFlags::COMPUTE, index_to_use, false);
+        let queue = OperationQueue::new(
+            family_index,
+            priority,
+            vk::QueueFlags::COMPUTE,
+            index_to_use,
+            false,
+        );
         self.compute_queues.push(queue);
     }
 
     pub fn create_sparse_queue(&mut self, family_index: u32, priority: f32, index_to_use: u32) {
-        let queue = OperationQueue::new(family_index, priority, vk::QueueFlags::SPARSE_BINDING, index_to_use, false);
+        let queue = OperationQueue::new(
+            family_index,
+            priority,
+            vk::QueueFlags::SPARSE_BINDING,
+            index_to_use,
+            false,
+        );
         self.sparse_queues.push(queue);
     }
 }
@@ -214,7 +249,13 @@ impl OperationQueue {
         self.operations_supported
     }
 
-    pub fn new(family_index: u32, priority: f32, operations_supported: vk::QueueFlags, index_to_use: u32, can_present: bool) -> OperationQueue {
+    pub fn new(
+        family_index: u32,
+        priority: f32,
+        operations_supported: vk::QueueFlags,
+        index_to_use: u32,
+        can_present: bool,
+    ) -> OperationQueue {
         OperationQueue {
             family_index,
             priority,
@@ -227,14 +268,20 @@ impl OperationQueue {
 
 #[cfg(test)]
 mod tests {
-    use super::{QueueFamily, DeviceQueue, OperationQueue, RendererQueues, RendererQueuesBuilder, };
+    use super::{DeviceQueue, OperationQueue, QueueFamily, RendererQueues, RendererQueuesBuilder};
     use crate::config::QueueManager;
     use erupt::vk1_0 as vk;
     #[test]
     fn basic_operation_queue_test() {
-        let queue = QueueFamily::new(2, vk::QueueFlags::GRAPHICS & vk::QueueFlags::COMPUTE, 4, 0, vk::Extent3D::default(), true);
-        
-        
+        let queue = QueueFamily::new(
+            2,
+            vk::QueueFlags::GRAPHICS & vk::QueueFlags::COMPUTE,
+            4,
+            0,
+            vk::Extent3D::default(),
+            true,
+        );
+
         let mut builder = RendererQueuesBuilder::new();
         builder.create_graphics_queue(2, 1.0, 0, true);
         builder.create_transfer_queue(3, 1.0, 0);
@@ -246,20 +293,18 @@ mod tests {
             Some(gq) => {
                 assert_eq!(gq.get_queue(), 0);
                 assert_eq!(gq.family_index, 2);
-            },
+            }
             None => panic!("No graphics queue found"),
         }
         println!("Queues: {:?}", render_queues);
-
-        
     }
 
     #[test]
     fn device_queue_test() {
         let mut dq = DeviceQueue::new(2, 5);
         let res = dq.request_queue(1.0);
-        assert_eq!(res,Some(0));
-        assert_eq!(dq.reserved_queues,1);
+        assert_eq!(res, Some(0));
+        assert_eq!(dq.reserved_queues, 1);
         assert_eq!(dq.available_queues, 5);
     }
 }

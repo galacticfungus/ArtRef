@@ -1,9 +1,9 @@
-use erupt::DeviceLoader;
 use erupt::vk1_0 as vk;
+use erupt::DeviceLoader;
 pub struct Renderpass<'a, 'b> {
     device: &'a DeviceLoader,
     attachments: Vec<&'b Attachment>,
-    render_pass: Option<vk::RenderPass>
+    render_pass: Option<vk::RenderPass>,
 }
 
 impl<'a, 'b> Renderpass<'a, 'b> {
@@ -12,7 +12,7 @@ impl<'a, 'b> Renderpass<'a, 'b> {
     //     // TODO: Each subpass can have multiple attachments
     //     // TODO: Multiple subpasses can reference the same attachments as inputs or outputs
     //     // TODO: So we build a list of render passes and then reference the attachments as needed
-    //     let subpass_builder = vk::SubpassDescriptionBuilder::new() 
+    //     let subpass_builder = vk::SubpassDescriptionBuilder::new()
     //         .color_attachments(color_attachments)
     //         Attachments used for multisampling color attachments
     //         .resolve_attachments(resolve_attachments)
@@ -86,26 +86,23 @@ impl<'a, 'b> Renderpass<'a, 'b> {
         let renderpass_create_info = vk::RenderPassCreateInfoBuilder::new()
             .attachments(sexy)
             .subpasses(std::slice::from_ref(&subpass));
-        
+
         // if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
         //     throw std::runtime_error("failed to create render pass!");
         // }
-        let rp = unsafe { self.device.create_render_pass(&renderpass_create_info, None, None) }
-            .expect("Failed to create test render pass");
+        let rp = unsafe {
+            self.device
+                .create_render_pass(&renderpass_create_info, None, None)
+        }
+        .expect("Failed to create test render pass");
         self.render_pass = Some(rp);
     }
 
-    pub fn add_attachment_input(&mut self, attachment: &Attachment) {
+    pub fn add_attachment_input(&mut self, attachment: &Attachment) {}
 
-    }
+    pub fn add_colour_output(&mut self, attachment: &Attachment) {}
 
-    pub fn add_colour_output(&mut self, attachment: &Attachment) {
-        
-    }
-
-    pub fn add_presentation_output(&mut self, attachment: &Attachment) {
-
-    }
+    pub fn add_presentation_output(&mut self, attachment: &Attachment) {}
 
     pub fn new(device: &DeviceLoader) -> Renderpass {
         Renderpass {
@@ -125,7 +122,6 @@ impl<'a, 'b> Renderpass<'a, 'b> {
 
     //     // build render graph
 
-
     //     // Can render passes use dynamic attachments?
 
     //     // return renderpass object
@@ -135,7 +131,6 @@ impl<'a, 'b> Renderpass<'a, 'b> {
 
 pub struct Attachment {
     attachment: vk::AttachmentDescription,
-
 }
 
 impl Attachment {
@@ -146,16 +141,14 @@ impl Attachment {
     }
 }
 
-pub struct Subpass {
-
-}
+pub struct Subpass {}
 
 // Create attachment
 // VkAttachmentDescription colorAttachment{};
 //     colorAttachment.format = swapChainImageFormat;
 //     colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 // VkSubpassDescription subpass{};
-    // subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+// subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 // Create renderpass based on attachments created
 // VkRenderPassCreateInfo renderPassInfo{};
 // renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -163,8 +156,6 @@ pub struct Subpass {
 // renderPassInfo.pAttachments = &colorAttachment;
 // renderPassInfo.subpassCount = 1;
 // renderPassInfo.pSubpasses = &subpass;
-
-
 
 // if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
 //     throw std::runtime_error("failed to create render pass!");

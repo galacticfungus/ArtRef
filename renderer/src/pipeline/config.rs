@@ -1,9 +1,7 @@
-use erupt::vk1_0 as vk;
-use crate::error::{Error, ErrorKind};
 use super::traits::ConfigureVertexInput;
-use super::{ConfigureShaders, ConfigurePipeline};
-
-
+use super::{ConfigurePipeline, ConfigureShaders};
+use crate::error::{Error, ErrorKind};
+use erupt::vk1_0 as vk;
 
 impl<'a> ConfigurePipeline<'a> {
     pub fn new(device: &erupt::DeviceLoader) -> ConfigurePipeline {
@@ -19,11 +17,14 @@ impl<'a> ConfigurePipeline<'a> {
             rasterizer_configuration: None,
             multisample_config: None,
             sample_masks: Vec::new(),
+            color_blending: None,
         }
     }
 
-    pub fn configure_shaders(&mut self, define_shaders: &mut dyn FnMut(&mut ConfigureShaders) -> Result<(), Error>) -> Result<&mut dyn ConfigureVertexInput, Error>
-    {
+    pub fn configure_shaders(
+        &mut self,
+        define_shaders: &mut dyn FnMut(&mut ConfigureShaders) -> Result<(), Error>,
+    ) -> Result<&mut dyn ConfigureVertexInput, Error> {
         let mut configure_shaders = ConfigureShaders::new(self.device);
         if let Err(error) = define_shaders(&mut configure_shaders) {
             return Err(error);
@@ -77,7 +78,6 @@ impl<'a> ConfigurePipeline<'a> {
 // vertexInputInfo.pVertexAttributeDescriptions = nullptr; // Optional
 
 // TODO: These configure types some strong bindings to the parent data structure, is this code smell or ok?
-
 
 // impl<'a> ConfigureVertexInput<'a> {
 //     pub fn new(
@@ -259,7 +259,6 @@ impl<'a> ConfigurePipeline<'a> {
 //     }
 // }
 
-
 // impl ViewportManager {
 //     pub fn new() -> ViewportManager {
 //         ViewportManager {
@@ -297,8 +296,6 @@ impl<'a> ConfigurePipeline<'a> {
 //     }
 // }
 
-
-
 // impl Viewport {
 //     pub fn new(
 //         x: f32,
@@ -332,8 +329,6 @@ impl<'a> ConfigurePipeline<'a> {
 //     }
 // }
 
-
-
 // use std::convert::TryFrom;
 
 // impl TryFrom<ConfigureShader> for ShaderData {
@@ -341,7 +336,7 @@ impl<'a> ConfigurePipeline<'a> {
 //     fn try_from(shader: ConfigureShader) -> Result<Self, crate::Error> {
 //         match (shader.entry_name, shader.shader_code) {
 //             (Some(entry_name), Some(shader_code)) => {
-                
+
 //                 let shader_data = ShaderData {
 //                     entry_name,
 //                     shader_code,

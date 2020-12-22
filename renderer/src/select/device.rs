@@ -2,7 +2,10 @@ use super::{
     DeviceExtensions, DeviceFilter, DeviceSelector, ExtensionManager, Features, FiltersDevices,
     Gpu, SelectedDevice, SuitableDevices,
 };
-use crate::{error::{Error, ErrorKind}, ConfigureDevice, ConfigurePresenter, PciVendor, QueueFamily};
+use crate::{
+    error::{Error, ErrorKind},
+    ConfigureDevice, ConfigurePresenter, PciVendor, QueueFamily,
+};
 use erupt::extensions::khr_surface as surface;
 use erupt::vk1_0 as vk;
 use std::collections::HashSet;
@@ -47,25 +50,33 @@ impl<'a> DeviceSelector<'a> {
             unsafe { instance.get_physical_device_properties(physical_device, None) };
         // TODO: If we have enabled some layers here we can pass them in to obtain additional extensions
         // This is a Vulkan CString meaning that it is null terminated as well as UTF8 encoded
-        
-        let available_extensions =
-            match unsafe { instance.enumerate_device_extension_properties(physical_device, None, None) }.result() {
-                Ok(extensions) => extensions,
-                Err(error) => {
-                        use std::ffi::CStr;
-                        let c_device_name: &CStr = unsafe { CStr::from_ptr(device_properties.device_name.as_ptr()) };
-                        let device_name = match c_device_name.to_str() { // An error here should be impossible since Vulkan Specification states that the c strings must be UTF8
-                            Ok(device_name) => Some(device_name.to_string()),
-                            Err(_) => None, // Not being able to parse this probably means that the underlying data structure is corrupted since the standard specifies UTF8 encoded names
-                                            // TODO: Can this be added as context
-                        };
-                        return Err(Error::new(ErrorKind::FailedToGetDeviceExtensions(device_name), Some(Error::from(error))));
-                    },
-            };
+
+        let available_extensions = match unsafe {
+            instance.enumerate_device_extension_properties(physical_device, None, None)
+        }
+        .result()
+        {
+            Ok(extensions) => extensions,
+            Err(error) => {
+                use std::ffi::CStr;
+                let c_device_name: &CStr =
+                    unsafe { CStr::from_ptr(device_properties.device_name.as_ptr()) };
+                let device_name = match c_device_name.to_str() {
+                    // An error here should be impossible since Vulkan Specification states that the c strings must be UTF8
+                    Ok(device_name) => Some(device_name.to_string()),
+                    Err(_) => None, // Not being able to parse this probably means that the underlying data structure is corrupted since the standard specifies UTF8 encoded names
+                                    // TODO: Can this be added as context
+                };
+                return Err(Error::new(
+                    ErrorKind::FailedToGetDeviceExtensions(device_name),
+                    Some(Error::from(error)),
+                ));
+            }
+        };
         // VK_ERROR_OUT_OF_HOST_MEMORY
         // VK_ERROR_OUT_OF_DEVICE_MEMORY
         // VK_ERROR_LAYER_NOT_PRESENT
-        
+
         let device_features =
             unsafe { instance.get_physical_device_features(physical_device, None) };
 
@@ -103,7 +114,7 @@ impl<'a> DeviceSelector<'a> {
         }
         .result()
         .map_err(|error| Error::new(ErrorKind::SurfaceLost, None))?;
-        
+
         // Errors that can be returned
         // VK_ERROR_OUT_OF_HOST_MEMORY
         // VK_ERROR_OUT_OF_DEVICE_MEMORY
@@ -124,9 +135,9 @@ impl<'a> DeviceSelector<'a> {
                 surface,
                 None,
             )
-        // VK_ERROR_OUT_OF_HOST_MEMORY
-        // VK_ERROR_OUT_OF_DEVICE_MEMORY
-        // VK_ERROR_SURFACE_LOST_KHR
+            // VK_ERROR_OUT_OF_HOST_MEMORY
+            // VK_ERROR_OUT_OF_DEVICE_MEMORY
+            // VK_ERROR_SURFACE_LOST_KHR
         }
         .expect(format!(
             "Failed to retrieve surface support for family index {}",
@@ -176,7 +187,6 @@ impl<'a> DeviceSelector<'a> {
         // VK_ERROR_INITIALIZATION_FAILED
         // VK_ERROR_OUT_OF_HOST_MEMORY
         // VK_ERROR_OUT_OF_DEVICE_MEMORY
-
 
         if devices.is_empty() {
             return Err(Error::new(ErrorKind::NoDevicesFound, None));
@@ -273,10 +283,7 @@ impl<'a> DeviceSelector<'a> {
         (device_selected, configure_presenter)
     }
 
-    pub fn required_device_extensions<F>(
-        mut self,
-        select_extensions: F,
-    ) -> Result<Self, Error>
+    pub fn required_device_extensions<F>(mut self, select_extensions: F) -> Result<Self, Error>
     where
         F: Fn(&mut ExtensionManager<DeviceExtensions>) -> (),
     {

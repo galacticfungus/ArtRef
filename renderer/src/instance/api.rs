@@ -3,17 +3,17 @@
 // use ash::vk_make_version;
 
 use erupt::vk1_0 as vk;
-use erupt::vk1_0::make_version as make_version;
+use erupt::vk1_0::make_version;
 
 use std::collections::{HashMap, HashSet};
 use std::ffi::CStr;
 use std::ffi::CString;
-use std::os::raw::{c_char};
+use std::os::raw::c_char;
 
 use super::layers::LayerManager;
 use super::{DeviceSelector, ExtensionManager, InstanceExtensions, Layers};
+use crate::error::{DisplayDebug, Error, ErrorKind};
 use crate::{ConfigureDevice, SelectedDevice};
-use crate::error::{Error, ErrorKind, DisplayDebug};
 
 pub struct VulkanConfig {
     entry: erupt::DefaultEntryLoader,
@@ -31,40 +31,42 @@ pub struct VulkanConfig {
 impl VulkanConfig {
     pub fn new() -> Result<Self, Error> {
         use erupt::utils::loading::{EntryLoaderError, LibraryError};
-        use std::fmt::Display;
         use std::error::Error as ErrorTrait;
+        use std::fmt::Display;
         let entry = match erupt::EntryLoader::new() {
-            
             Ok(entry) => entry,
             // These two error objects both have debug and display traits so perhaps I should include them as source or as context?
             // TODO: TO get better error information we need to override the default library loading code
-            Err(EntryLoaderError::EntryLoad(_)) => return Err(Error::new(ErrorKind::InitializationFailed, None)),
+            Err(EntryLoaderError::EntryLoad(_)) => {
+                return Err(Error::new(ErrorKind::InitializationFailed, None))
+            }
             // This is an error from the libloading crate but accessing it from here is impossible as it has been wrapped in a LibraryError with private details
             Err(EntryLoaderError::Library(_)) => {
                 return Err(Error::new(ErrorKind::VulkanNotInstalled, None));
-            },
+            }
         };
         // Remember instance version differs from device version
         // let entry = Entry::new()?;
         // match entry.try_enumerate_instance_version()? {
         // Vulkan 1.1+
-            // Some(version) => {
-            //     let major = vk_version_major!(version);
-            //     let minor = vk_version_minor!(version);
-            //     let patch = vk_version_patch!(version);
-            // },
+        // Some(version) => {
+        //     let major = vk_version_major!(version);
+        //     let minor = vk_version_minor!(version);
+        //     let patch = vk_version_patch!(version);
+        // },
         // Vulkan 1.0
         //     None => {},
         // }
-        
-        let available_extensions = unsafe {entry
-            .enumerate_instance_extension_properties(None, None) }
-            .expect("Failed to load list of extensions");
+
+        let available_extensions =
+            unsafe { entry.enumerate_instance_extension_properties(None, None) }
+                .expect("Failed to load list of extensions");
         // VK_ERROR_OUT_OF_HOST_MEMORY
         // VK_ERROR_OUT_OF_DEVICE_MEMORY
         // VK_ERROR_LAYER_NOT_PRESENT
 
-        let available_layers = unsafe { entry.enumerate_instance_layer_properties(None) }.expect("Failed to load list of layers");
+        let available_layers = unsafe { entry.enumerate_instance_layer_properties(None) }
+            .expect("Failed to load list of layers");
         // VK_ERROR_OUT_OF_HOST_MEMORY
         // VK_ERROR_OUT_OF_DEVICE_MEMORY
 
@@ -115,12 +117,12 @@ impl VulkanConfig {
     where
         F: Fn(&mut ExtensionManager<InstanceExtensions>) -> (),
     {
-        
         let mut mng = ExtensionManager::new();
         required_extensions(&mut mng);
         // If any of the extensions couldn't be found return an error
         let requested_extensions = mng.get_extensions();
-        let mut extensions_to_add: HashMap<InstanceExtensions, bool> = HashMap::with_capacity(requested_extensions.len());
+        let mut extensions_to_add: HashMap<InstanceExtensions, bool> =
+            HashMap::with_capacity(requested_extensions.len());
         for extension in requested_extensions {
             if self.is_extension_available(&extension) {
                 // TODO: Ensure these pointers are valid as they should point to static strings inside the ash library
@@ -129,32 +131,41 @@ impl VulkanConfig {
                 extensions_to_add.insert(extension, false);
             }
         }
-        if extensions_to_add.iter().any(|(_, present)| *present == false) {
+        if extensions_to_add
+            .iter()
+            .any(|(_, present)| *present == false)
+        {
             let missing_extensions: Vec<InstanceExtensions> = self
                 .requested_extensions
                 .iter()
                 .filter(|(_, present)| **present == false)
                 .map(|(ext, _)| ext.clone())
                 .collect();
-            return Err(Error::new(ErrorKind::InstanceExtensionsNotFound(missing_extensions), None));
+            return Err(Error::new(
+                ErrorKind::InstanceExtensionsNotFound(missing_extensions),
+                None,
+            ));
         }
-        
-        self.requested_extensions.extend(extensions_to_add.into_iter());
+
+        self.requested_extensions
+            .extend(extensions_to_add.into_iter());
         Ok(self)
     }
     /// Checks if a layer is available to Vulkan
     fn is_layer_available(&self, layer: &Layers) -> bool {
-        self.available_layers.iter()
+        self.available_layers
+            .iter()
             // This is safe since the pointer is never left dangling and layer_name must be a c string
             .map(|layer| unsafe { CStr::from_ptr(layer.layer_name.as_ptr()) })
             .any(|layer_name| layer_name == layer.get_name())
     }
 
-    fn is_extension_available(
-        &self,
-        extension: &InstanceExtensions,
-    ) -> bool {
-        for available_extension in self.available_extensions.iter().map(|ext| unsafe { CStr::from_ptr(ext.extension_name.as_ptr()) } ) {
+    fn is_extension_available(&self, extension: &InstanceExtensions) -> bool {
+        for available_extension in self
+            .available_extensions
+            .iter()
+            .map(|ext| unsafe { CStr::from_ptr(ext.extension_name.as_ptr()) })
+        {
             if available_extension == extension.get_name() {
                 return true;
             }
@@ -199,7 +210,6 @@ impl VulkanConfig {
 
     // Create an instance of the Vulkan API
     pub fn init(self) -> Result<VulkanApi, Error> {
-        
         // TODO: These can be static references
         // Must be NULL or a c string
         // let c_app_name = match &self.application_name {
@@ -208,14 +218,14 @@ impl VulkanConfig {
         // };
         // Must be null or a C string
         let app_name = match &self.application_name {
-                Some(app_name) => CString::new(app_name.as_str())
-                    .expect("Failed to create a c type string from the application name"),
-                None => CString::default(),
+            Some(app_name) => CString::new(app_name.as_str())
+                .expect("Failed to create a c type string from the application name"),
+            None => CString::default(),
         };
         let engine_name = match &self.engine_name {
-                Some(eng_name) => CString::new(eng_name.as_str())
-                    .expect("Failed to create a c type string from the engin name"),
-                None => CString::default(),
+            Some(eng_name) => CString::new(eng_name.as_str())
+                .expect("Failed to create a c type string from the engin name"),
+            None => CString::default(),
         };
         let app_info = erupt::vk1_0::ApplicationInfo {
             api_version: self.api_version,
@@ -228,13 +238,16 @@ impl VulkanConfig {
         // TODO: Support required instance extensions and layers
         // TODO: Double check all handling of c strings
         // Convert the Extensions enum to raw pointers to c strings, only include extensions that are available
-        let extensions_to_load: Vec<*const c_char> = self.requested_extensions
+        let extensions_to_load: Vec<*const c_char> = self
+            .requested_extensions
             .iter()
             .filter(|(_, &present)| present == true)
             .map(|(ext, _)| ext.get_name().as_ptr())
             .collect();
         // Filter layers that are not available
-        let available_layers_to_load: Vec<*const c_char> = self.layers_to_load.iter()
+        let available_layers_to_load: Vec<*const c_char> = self
+            .layers_to_load
+            .iter()
             .filter(|(_, &present)| present == true)
             .map(|(layer, _)| layer.get_name().as_ptr())
             .collect();
@@ -248,13 +261,14 @@ impl VulkanConfig {
         };
         //let instance = InstanceLoader::new(&entry, &create_info, None).unwrap();
         let instance = erupt::InstanceLoader::new(&self.entry, &create_info, None)
-                .expect("Failed to create instance");
+            .expect("Failed to create instance");
         // TODO: Handle possible errors
-        
+
         // instance = Some(instance);
-        let extensions_loaded = extensions_to_load.iter()
-                                                    .map(|&ext| unsafe { CStr::from_ptr(ext) })
-                                                    .collect::<HashSet<&'static CStr>>();
+        let extensions_loaded = extensions_to_load
+            .iter()
+            .map(|&ext| unsafe { CStr::from_ptr(ext) })
+            .collect::<HashSet<&'static CStr>>();
         // TODO: store loaded layers
         Ok(VulkanApi::new(self.entry, instance, extensions_loaded))
     }
@@ -267,11 +281,14 @@ pub struct VulkanApi {
 }
 
 impl VulkanApi {
-    pub fn new(entry: erupt::DefaultEntryLoader, instance: erupt::InstanceLoader, extensions_loaded: HashSet<&'static CStr>) -> VulkanApi {
-        
+    pub fn new(
+        entry: erupt::DefaultEntryLoader,
+        instance: erupt::InstanceLoader,
+        extensions_loaded: HashSet<&'static CStr>,
+    ) -> VulkanApi {
         VulkanApi {
-            _entry: entry, 
-            instance, 
+            _entry: entry,
+            instance,
             extensions_loaded,
         }
     }
@@ -280,9 +297,12 @@ impl VulkanApi {
         self.extensions_loaded.contains(extension.get_name())
     }
 
-    pub fn create_device_selector(&self, window: &winit::window::Window) -> Result<DeviceSelector, Error> {
+    pub fn create_device_selector(
+        &self,
+        window: &winit::window::Window,
+    ) -> Result<DeviceSelector, Error> {
         let surface = crate::presenter::create_surface(&self.instance, window);
-        DeviceSelector::new(&self.instance, surface)    
+        DeviceSelector::new(&self.instance, surface)
     }
 
     pub fn configure_device(&self, selected_device: SelectedDevice) -> ConfigureDevice {

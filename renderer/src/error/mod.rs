@@ -1,10 +1,10 @@
-use crate::{Features, InstanceExtensions, DeviceExtensions, Gpu};
+use crate::{DeviceExtensions, Features, Gpu, InstanceExtensions};
 use std::ffi::CString;
 
-mod error;
-mod kind;
 mod context;
+mod error;
 mod inner;
+mod kind;
 
 /// Represents an error returned by the renderer
 #[derive(Debug)]
@@ -27,9 +27,9 @@ pub struct Context {
     debug: Option<&'static (dyn std::fmt::Debug + Send + Sync + 'static)>,
 }
 
-pub trait DisplayDebug : std::fmt::Display + std::fmt::Debug + Send + Sync{
-    fn as_display(&self) -> & (dyn std::fmt::Display + Send + Sync);
-    fn as_debug(&self) -> & (dyn std::fmt::Debug + Send + Sync);
+pub trait DisplayDebug: std::fmt::Display + std::fmt::Debug + Send + Sync {
+    fn as_display(&self) -> &(dyn std::fmt::Display + Send + Sync);
+    fn as_debug(&self) -> &(dyn std::fmt::Debug + Send + Sync);
 }
 
 #[derive(Debug, Clone)]
@@ -53,9 +53,9 @@ pub enum ErrorKind {
     NoDevicesFound,
     /// You're unlikely to see this error as its handled by the renderer
     SurfaceLost,
-    InitializationFailed, // Vulkan initialization failed
+    InitializationFailed,          // Vulkan initialization failed
     SwapchainConfigurationMissing, // TODO: Can we pass Swapchain Configuration here?
-    InvalidPipelineConfig,  // Is the best we can do a context message about what was misconfigured
+    InvalidPipelineConfig, // Is the best we can do a context message about what was misconfigured
     FailedToGetDeviceExtensions(Option<String>),
     VulkanNotInstalled,
     InvalidShaderEntryMethodName(Vec<u8>),

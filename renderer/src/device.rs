@@ -1,5 +1,5 @@
+use crate::{ConfigurePipeline, DeviceExtensions, PciVendor, RendererQueues, Renderpass, Version};
 use erupt::vk1_0 as vk;
-use crate::{Version, PciVendor, DeviceExtensions, RendererQueues, ConfigurePipeline, Renderpass};
 
 use std::collections::HashMap;
 use std::os::raw::c_char;
@@ -21,16 +21,18 @@ pub struct VulkanDevice {
 }
 
 impl VulkanDevice {
-    pub fn new(physical_device: vk::PhysicalDevice, 
+    pub fn new(
+        physical_device: vk::PhysicalDevice,
         render_queues: RendererQueues,
-        enabled_features: vk::PhysicalDeviceFeatures, 
+        enabled_features: vk::PhysicalDeviceFeatures,
         extensions_loaded: HashMap<DeviceExtensions, bool>,
         device: erupt::DeviceLoader,
         vendor_id: PciVendor,
         device_id: u32,
         api_version: Version,
         driver_version: u32,
-        device_name: [c_char; erupt::vk1_0::MAX_PHYSICAL_DEVICE_NAME_SIZE as usize]) -> VulkanDevice {
+        device_name: [c_char; erupt::vk1_0::MAX_PHYSICAL_DEVICE_NAME_SIZE as usize],
+    ) -> VulkanDevice {
         VulkanDevice {
             render_queues,
             enabled_features,
@@ -65,10 +67,7 @@ impl VulkanDevice {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
 
     #[test]
-    fn test_() {
-        
-    }
+    fn test_() {}
 }

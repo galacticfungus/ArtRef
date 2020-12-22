@@ -1,4 +1,7 @@
-use super::{ColorBlendingSettings, DepthStencilSettings, InputAssembelySettings, MultiSampleSettings, RasterizerSettings, VertexInputSettings, ViewportManager};
+use super::{
+    ColorBlendingSettings, DepthStencilSettings, InputAssembelySettings, MultiSampleSettings,
+    RasterizerSettings, VertexInputSettings, ViewportManager,
+};
 use erupt::vk1_0 as vk;
 pub trait ConfigureVertexInput {
     fn configure_vertex_input(
@@ -29,13 +32,22 @@ pub trait ConfigureRasterizer {
 }
 
 pub trait ConfigureMultisampling {
-    fn configure_multisampling(&mut self, configure_multisampling: &mut dyn FnMut(&mut MultiSampleSettings)) -> &mut dyn ConfigureDepthStencil;
+    fn configure_multisampling(
+        &mut self,
+        configure_multisampling: &mut dyn FnMut(&mut MultiSampleSettings),
+    ) -> &mut dyn ConfigureDepthStencil;
 }
 
 pub trait ConfigureDepthStencil {
-    fn configure_depthstencil(&mut self, configure_depthstencil: &mut dyn FnMut(&mut DepthStencilSettings)) -> &mut dyn ConfigureColorBlending;
+    fn configure_depthstencil(
+        &mut self,
+        configure_depthstencil: &mut dyn FnMut(&mut DepthStencilSettings),
+    ) -> &mut dyn ConfigureColorBlending;
 }
 
 pub trait ConfigureColorBlending {
-    fn configure_blending(&mut self, configure_blending: &mut dyn FnMut(&mut ColorBlendingSettings));
+    fn configure_blending(
+        &mut self,
+        configure_blending: &mut dyn FnMut(&mut ColorBlendingSettings),
+    );
 }

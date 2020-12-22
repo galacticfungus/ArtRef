@@ -1,4 +1,4 @@
-use super::{ErrorKind, InnerError, Error, DisplayDebug};
+use super::{DisplayDebug, Error, ErrorKind, InnerError};
 
 impl Error {
     pub fn new(kind: ErrorKind, source: Option<Error>) -> Error {
@@ -28,10 +28,18 @@ impl std::error::Error for Error {
 impl std::convert::From<erupt::vk1_0::Result> for Error {
     fn from(result: erupt::vk1_0::Result) -> Self {
         match result {
-            erupt::vk1_0::Result::ERROR_INITIALIZATION_FAILED => Error::new(ErrorKind::InitializationFailed, None),
-            erupt::vk1_0::Result::ERROR_OUT_OF_HOST_MEMORY => Error::new(ErrorKind::OutOfHostMemory, None),
-            erupt::vk1_0::Result::ERROR_OUT_OF_DEVICE_MEMORY => Error::new(ErrorKind::OutOfDeviceMemory, None),
-            erupt::vk1_0::Result::ERROR_LAYER_NOT_PRESENT => unreachable!("ERROR_LAYER_NOT_PRESENT must be converted in place as it has a parameter"),
+            erupt::vk1_0::Result::ERROR_INITIALIZATION_FAILED => {
+                Error::new(ErrorKind::InitializationFailed, None)
+            }
+            erupt::vk1_0::Result::ERROR_OUT_OF_HOST_MEMORY => {
+                Error::new(ErrorKind::OutOfHostMemory, None)
+            }
+            erupt::vk1_0::Result::ERROR_OUT_OF_DEVICE_MEMORY => {
+                Error::new(ErrorKind::OutOfDeviceMemory, None)
+            }
+            erupt::vk1_0::Result::ERROR_LAYER_NOT_PRESENT => unreachable!(
+                "ERROR_LAYER_NOT_PRESENT must be converted in place as it has a parameter"
+            ),
             // Generic catch all Vulkan error
             error => Error::new(ErrorKind::VulkanApiError(error), None),
         }

@@ -1,4 +1,4 @@
-use super::{DisplayDebug, Context};
+use super::{Context, DisplayDebug};
 
 impl Context {
     pub fn new() -> Context {
@@ -8,11 +8,17 @@ impl Context {
         }
     }
 
-    pub fn add_display_context(&mut self, context: &'static (dyn std::fmt::Display + Send + Sync + 'static)) {
+    pub fn add_display_context(
+        &mut self,
+        context: &'static (dyn std::fmt::Display + Send + Sync + 'static),
+    ) {
         self.display = Some(context);
     }
 
-    pub fn add_debug_context(&mut self, context: &'static (dyn std::fmt::Debug + Send + Sync + 'static)) {
+    pub fn add_debug_context(
+        &mut self,
+        context: &'static (dyn std::fmt::Debug + Send + Sync + 'static),
+    ) {
         self.debug = Some(context);
     }
 
@@ -41,11 +47,11 @@ impl std::fmt::Debug for Context {
 }
 
 impl<T: std::fmt::Display + std::fmt::Debug + Send + Sync + 'static> DisplayDebug for T {
-    fn as_debug(&self) -> & (dyn std::fmt::Debug + Send + Sync) {
+    fn as_debug(&self) -> &(dyn std::fmt::Debug + Send + Sync) {
         self
     }
 
-    fn as_display(&self) -> & (dyn std::fmt::Display + Send + Sync) {
+    fn as_display(&self) -> &(dyn std::fmt::Display + Send + Sync) {
         self
     }
 }

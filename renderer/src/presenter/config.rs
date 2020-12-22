@@ -1,10 +1,21 @@
-use crate::{error::{Error, ErrorKind}, PickManager};
+use super::{
+    ConfigurePresenter, PresentMode, Presenter, SurfaceColourSpace, SurfaceFormat, SwapchainExtent,
+    SwapchainImageCount,
+};
+use crate::{
+    error::{Error, ErrorKind},
+    PickManager,
+};
 use erupt::extensions::khr_surface as surface;
-use super::{PresentMode, SurfaceColourSpace, SwapchainExtent, SwapchainImageCount, SurfaceFormat, Presenter, ConfigurePresenter};
 use erupt::vk1_0 as vk;
 
 impl ConfigurePresenter {
-    pub fn new(surface: surface::SurfaceKHR, surface_capabilities: surface::SurfaceCapabilitiesKHR, surface_formats: Vec<surface::SurfaceFormatKHR>, present_modes: Vec<surface::PresentModeKHR>) -> Self {
+    pub fn new(
+        surface: surface::SurfaceKHR,
+        surface_capabilities: surface::SurfaceCapabilitiesKHR,
+        surface_formats: Vec<surface::SurfaceFormatKHR>,
+        present_modes: Vec<surface::PresentModeKHR>,
+    ) -> Self {
         Self {
             surface,
             surface_capabilities,
@@ -154,9 +165,9 @@ impl ConfigurePresenter {
         let present_mode = self
             .present_mode
             .ok_or(Error::new(ErrorKind::SwapchainConfigurationMissing, None))?;
-        let surface_format =
-            self.surface_format
-                .ok_or(Error::new(ErrorKind::SwapchainConfigurationMissing, None))?;
+        let surface_format = self
+            .surface_format
+            .ok_or(Error::new(ErrorKind::SwapchainConfigurationMissing, None))?;
         let extent = self
             .swapchain_extent
             .ok_or(Error::new(ErrorKind::SwapchainConfigurationMissing, None))?;
@@ -164,7 +175,6 @@ impl ConfigurePresenter {
     }
 
     fn validate_presentation_image_views(&self) -> Result<(), Error> {
-        
         Ok(())
     }
 

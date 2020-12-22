@@ -1,8 +1,8 @@
 mod api;
-mod layers;
 mod extensions;
+mod layers;
 
+use super::{DeviceSelector, ExtensionManager, VulkanDevice};
 pub use api::{VulkanApi, VulkanConfig};
-pub use layers::Layers;
 pub use extensions::InstanceExtensions;
-use super::{DeviceSelector, VulkanDevice, ExtensionManager};
+pub use layers::Layers;

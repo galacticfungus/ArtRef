@@ -10,15 +10,23 @@ pub enum InstanceExtensions {
 impl InstanceExtensions {
     pub fn get_name(&self) -> &'static CStr {
         match self {
-            Self::Surface => unsafe {CStr::from_ptr(erupt::extensions::khr_surface::KHR_SURFACE_EXTENSION_NAME)},
-            Self::Win32Surface => unsafe {CStr::from_ptr(erupt::extensions::khr_win32_surface::KHR_WIN32_SURFACE_EXTENSION_NAME)},
-            Self::DebugUtils => unsafe {CStr::from_ptr(erupt::extensions::ext_debug_utils::EXT_DEBUG_UTILS_EXTENSION_NAME)},
+            Self::Surface => unsafe {
+                CStr::from_ptr(erupt::extensions::khr_surface::KHR_SURFACE_EXTENSION_NAME)
+            },
+            Self::Win32Surface => unsafe {
+                CStr::from_ptr(
+                    erupt::extensions::khr_win32_surface::KHR_WIN32_SURFACE_EXTENSION_NAME,
+                )
+            },
+            Self::DebugUtils => unsafe {
+                CStr::from_ptr(erupt::extensions::ext_debug_utils::EXT_DEBUG_UTILS_EXTENSION_NAME)
+            },
         }
     }
 }
 
 impl std::fmt::Display for InstanceExtensions {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> { 
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
         f.write_fmt(format_args!("{:?},", self.get_name()))
     }
 }

@@ -1,6 +1,8 @@
-use super::{DeviceFilter, SupportDeviceFiltering, Gpu, SuitableDevices, FiltersDevices, DeviceExtensions};
-use crate::{ExtensionManager, Features};
+use super::{
+    DeviceExtensions, DeviceFilter, FiltersDevices, Gpu, SuitableDevices, SupportDeviceFiltering,
+};
 use crate::error::{Error, ErrorKind};
+use crate::{ExtensionManager, Features};
 
 use erupt::vk1_0 as vk;
 
@@ -8,7 +10,10 @@ use std::ffi::CStr;
 
 impl DeviceFilter {
     pub fn new(devices_to_filter: Vec<Gpu>) -> DeviceFilter {
-        DeviceFilter { devices_to_filter, extensions_to_load: Vec::default() }
+        DeviceFilter {
+            devices_to_filter,
+            extensions_to_load: Vec::default(),
+        }
     }
 
     pub fn get_filtered_devices(self) -> Vec<Gpu> {
@@ -41,15 +46,12 @@ where
     T: SupportDeviceFiltering,
 {
     // Set device extensions, the select_extensions closure
-    fn required_device_extensions<F>(
-        &'a mut self,
-        select_extensions: F,
-    ) -> Result<(), Error>
+    fn required_device_extensions<F>(&'a mut self, select_extensions: F) -> Result<(), Error>
     where
         F: Fn(&mut ExtensionManager<DeviceExtensions>) -> (),
     {
         use std::ffi::CString;
-        
+
         let mut em = ExtensionManager::new();
         select_extensions(&mut em);
         let requested_extensions = em.get_extensions();
@@ -61,13 +63,14 @@ where
             .filter(|(_, device)| {
                 requested_extensions
                     .iter() // Iterate over the extensions to load and check that the device supports each one
-                    .all(|ext| device.has_extension(ext)) == false // We only want the index of devices that fail to have all the required extensions
+                    .all(|ext| device.has_extension(ext))
+                    == false // We only want the index of devices that fail to have all the required extensions
             })
             .map(|(index, _)| index)
             .collect();
         // All the devices support the required extensions
         if filtered_devices.is_empty() {
-            return Ok(())
+            return Ok(());
         }
         if filtered_devices.len() > 0 && filtered_devices.len() < self.devices().len() {
             // Can apply filter
@@ -77,7 +80,8 @@ where
             }
         } else {
             // Check that there are some devices left otherwise no devices supported the required extensions
-            let devices: Vec<(Gpu, Vec<CString>)> = self.devices()
+            let devices: Vec<(Gpu, Vec<CString>)> = self
+                .devices()
                 .into_iter()
                 .map(|device| {
                     let mut missing_extensions: Vec<CString> = Vec::new();
@@ -90,7 +94,10 @@ where
                     (device.clone(), missing_extensions)
                 })
                 .collect();
-            return Err(Error::new(ErrorKind::MissingRequiredDeviceExtensions(devices), None));
+            return Err(Error::new(
+                ErrorKind::MissingRequiredDeviceExtensions(devices),
+                None,
+            ));
         }
         // Set the new extensions to load - if no devices supporting these extensions were found this point is never reached
         // TODO: Add an extension one at a time
@@ -156,7 +163,9 @@ where
             .devices()
             .iter()
             .enumerate()
-            .filter(|(_, device)| device.supports_operations(operations_required, must_present) == false) // Collect indexes that dont support the operations
+            .filter(|(_, device)| {
+                device.supports_operations(operations_required, must_present) == false
+            }) // Collect indexes that dont support the operations
             .map(|(index, _)| index)
             .collect();
         if indexes_to_keep.len() > 0 && indexes_to_keep.len() < self.devices().len() {

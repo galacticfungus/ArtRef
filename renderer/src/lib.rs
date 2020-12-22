@@ -1,41 +1,44 @@
-mod instance;
-mod error;
-mod pick;
-mod gpu;
-mod version;
 mod config;
 mod device;
+mod error;
 mod extensions;
 mod features;
+mod gpu;
+mod instance;
+mod pick;
+mod pipeline;
+mod presenter;
 mod queues;
+mod renderpass;
 mod select;
 mod vendor;
-mod presenter;
-mod pipeline;
-mod renderpass;
+mod version;
 
-pub use pipeline::ConfigurePipeline;
 pub use crate::error::Error;
-pub use pick::PickManager;
-pub use version::Version;
-pub use instance::VulkanApi;
-pub use instance::VulkanConfig;
 pub use extensions::ExtensionManager;
+pub use features::{Feature, Features};
 pub use instance::InstanceExtensions;
 pub use instance::Layers;
-pub use features::{Features, Feature};
+pub use instance::VulkanApi;
+pub use instance::VulkanConfig;
+pub use pick::PickManager;
+pub use pipeline::ConfigurePipeline;
+pub use version::Version;
 
-pub use queues::{QueueFamily, DeviceQueue, RendererQueues, OperationQueue, RendererQueuesBuilder};
-pub use select::{DeviceSelector, DeviceFilter, FiltersDevices, SelectedDevice};
-pub use vendor::PciVendor;
-pub use device::VulkanDevice;
-pub use presenter::{Presenter, ConfigurePresenter, PresentMode, SurfaceFormat, SurfaceColourSpace, SwapchainExtent, SwapchainImageCount};
 pub use config::{ConfigureDevice, DeviceExtensions};
-pub use renderpass::Renderpass;
+pub use device::VulkanDevice;
 pub use pipeline::AttributeFormat;
+pub use presenter::{
+    ConfigurePresenter, PresentMode, Presenter, SurfaceColourSpace, SurfaceFormat, SwapchainExtent,
+    SwapchainImageCount,
+};
+pub use queues::{DeviceQueue, OperationQueue, QueueFamily, RendererQueues, RendererQueuesBuilder};
+pub use renderpass::Renderpass;
+pub use select::{DeviceFilter, DeviceSelector, FiltersDevices, SelectedDevice};
+pub use vendor::PciVendor;
 
-use erupt::vk1_0 as vk;
 use erupt::extensions::khr_surface;
+use erupt::vk1_0 as vk;
 
 // Must be clonable so that errors can access a list of Gpu's
 #[derive(Clone)]

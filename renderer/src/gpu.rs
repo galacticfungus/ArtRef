@@ -1,6 +1,6 @@
-use crate::{QueueFamily, Features, PciVendor, DeviceExtensions, Gpu, Version};
-use erupt::vk1_0 as vk;
+use crate::{DeviceExtensions, Features, Gpu, PciVendor, QueueFamily, Version};
 use erupt::extensions::khr_surface as surface;
+use erupt::vk1_0 as vk;
 use std::ffi::CStr;
 
 // Represents a Gpu available on the local system
@@ -33,7 +33,7 @@ impl Gpu {
             surface_capabilities,
             surface_formats,
             present_modes,
-            presentable
+            presentable,
         }
     }
 
@@ -58,7 +58,11 @@ impl Gpu {
         }
     }
 
-    pub fn supports_operations(&self, operations_requried: vk::QueueFlags, must_present: bool) -> bool {
+    pub fn supports_operations(
+        &self,
+        operations_requried: vk::QueueFlags,
+        must_present: bool,
+    ) -> bool {
         for queue in self.queue_families.iter() {
             if queue.has_support_for(operations_requried, must_present) == true {
                 return true;
@@ -96,7 +100,8 @@ impl Gpu {
         // Convert the ExtensionProperty to a &CStr extension name
         for available_extension in self
             .available_extensions
-            .iter().map(|ext| unsafe { CStr::from_ptr(ext.extension_name.as_ptr()) } )
+            .iter()
+            .map(|ext| unsafe { CStr::from_ptr(ext.extension_name.as_ptr()) })
         {
             if extension.get_name() == available_extension {
                 return true;

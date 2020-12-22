@@ -1,6 +1,8 @@
-use std::collections::HashMap;
-use super::{QueueFamily, DeviceQueue, QueueManager, RendererQueues, OperationQueue, RendererQueuesBuilder};
+use super::{
+    DeviceQueue, OperationQueue, QueueFamily, QueueManager, RendererQueues, RendererQueuesBuilder,
+};
 use erupt::vk1_0 as vk;
+use std::collections::HashMap;
 
 impl<'a> QueueManager<'a> {
     pub fn new(family_data: &'a [QueueFamily]) -> QueueManager {
@@ -40,7 +42,7 @@ impl<'a> QueueManager<'a> {
             .map(|family| family.total_queues() as usize)
             .sum()
     }
-    
+
     /// Creates a queue that supports the given operations from the best fitting queue family
     /// The family is decided by  picking the family that supports the leat amount of operations
     /// requested. In addition if the must present flag is true then the queue created must be
@@ -70,7 +72,7 @@ impl<'a> QueueManager<'a> {
                         Some(updated) => return Some((updated, best_family_index)),
                         None => return None, // Queue can't be created as it is full
                     }
-                },
+                }
                 None => {
                     let queue_family = &self.family_data[best_family];
                     let mut new_queue = DeviceQueue::new(best_family, queue_family.total_queues());
@@ -80,10 +82,10 @@ impl<'a> QueueManager<'a> {
                         Some(queue_index) => {
                             self.queues_to_create.insert(best_family, new_queue);
                             return Some((queue_index, best_family_index));
-                        },
+                        }
                         None => return None,
                     }
-                },
+                }
             }
         }
         // Could not find a suitable family
@@ -91,7 +93,11 @@ impl<'a> QueueManager<'a> {
     }
 
     // We prioritize queue families that provide the least functionality when allocating queues
-    fn find_best_family(&self, operations_needed: vk::QueueFlags, must_present: bool) -> Option<usize> {
+    fn find_best_family(
+        &self,
+        operations_needed: vk::QueueFlags,
+        must_present: bool,
+    ) -> Option<usize> {
         let mut best_result = 100;
         let mut best_index = None;
         // self.gpu.get_supported_queues()
@@ -113,11 +119,16 @@ impl<'a> QueueManager<'a> {
     pub fn create_graphics_queue(&mut self, priority: f32, must_present: bool) {
         match self.create_queue_that_supports(vk::QueueFlags::GRAPHICS, priority, must_present) {
             Some((index_to_use, family_index)) => {
-                self.render_queues.create_graphics_queue(family_index, priority, index_to_use, must_present);
-            },
+                self.render_queues.create_graphics_queue(
+                    family_index,
+                    priority,
+                    index_to_use,
+                    must_present,
+                );
+            }
             None => {
                 // TODO: Return an error as we failed to create the queue
-            },
+            }
         }
         // TODO: Add the family and queue to the RendererQueue object
     }
@@ -125,27 +136,30 @@ impl<'a> QueueManager<'a> {
     pub fn create_transfer_queue(&mut self, priority: f32) {
         match self.create_queue_that_supports(vk::QueueFlags::TRANSFER, priority, false) {
             Some((index_to_use, family_index)) => {
-                self.render_queues.create_transfer_queue(family_index, priority, index_to_use);
-            },
-            None => {},
+                self.render_queues
+                    .create_transfer_queue(family_index, priority, index_to_use);
+            }
+            None => {}
         }
     }
 
     pub fn create_compute_queue(&mut self, priority: f32) {
         match self.create_queue_that_supports(vk::QueueFlags::COMPUTE, priority, false) {
             Some((index_to_use, family_index)) => {
-                self.render_queues.create_compute_queue(family_index, priority, index_to_use);
-            },
-            None => {},
+                self.render_queues
+                    .create_compute_queue(family_index, priority, index_to_use);
+            }
+            None => {}
         }
     }
 
     pub fn create_sparse_queue(&mut self, priority: f32) {
         match self.create_queue_that_supports(vk::QueueFlags::SPARSE_BINDING, priority, false) {
             Some((index_to_use, family_index)) => {
-                self.render_queues.create_sparse_queue(family_index, priority, index_to_use);
-            },
-            None => {},
+                self.render_queues
+                    .create_sparse_queue(family_index, priority, index_to_use);
+            }
+            None => {}
         }
     }
 }

@@ -1,8 +1,7 @@
-use std::ffi::CStr;
 use std::collections::HashMap;
+use std::ffi::CStr;
 
 use erupt::extensions;
-
 
 #[feature(const_str_as_bytes)]
 macro_rules! make_layer {
@@ -38,8 +37,7 @@ pub struct LayerManager {
 
 impl LayerManager {
     pub fn new(entry: &erupt::DefaultEntryLoader) -> LayerManager {
-        let layers = unsafe {entry
-            .enumerate_instance_layer_properties(None) }
+        let layers = unsafe { entry.enumerate_instance_layer_properties(None) }
             .expect("Failed to get list of layers");
         let mut available_layers = Vec::with_capacity(layers.len());
         for layer in layers {

@@ -1,5 +1,5 @@
-use erupt::vk1_0 as vk;
 use erupt::extensions::khr_surface as surface;
+use erupt::vk1_0 as vk;
 #[derive(Debug)]
 pub enum PresentMode {
     /// Specifies that the presentation engine does not wait for a vertical blanking period to update the current image, meaning

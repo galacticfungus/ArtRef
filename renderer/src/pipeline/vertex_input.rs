@@ -1,10 +1,10 @@
 use crate::Feature;
 
 use super::traits::{ConfigureInputAssembely, ConfigureVertexInput};
-use super::{ConfigurePipeline, VertexInputSettings, AttributeFormat, VertexBinding};
+use super::{AttributeFormat, ConfigurePipeline, VertexBinding, VertexInputSettings};
 
 use erupt::vk1_0 as vk;
-use erupt::vk1_0::Format as Format;
+use erupt::vk1_0::Format;
 
 impl<'a> ConfigureVertexInput for ConfigurePipeline<'a> {
     fn configure_vertex_input(
@@ -31,9 +31,7 @@ impl<'a> ConfigureVertexInput for ConfigurePipeline<'a> {
     }
 }
 
-impl AttributeFormat {
-
-}
+impl AttributeFormat {}
 
 // TODO: Use rusts types
 
@@ -58,16 +56,22 @@ impl From<AttributeFormat> for vk::Format {
     }
 }
 
-
-
 impl<'a> VertexBinding<'a> {
-    pub fn new(binding: &'a vk::VertexInputBindingDescription, attributes: &'a mut Vec<vk::VertexInputAttributeDescription>) -> VertexBinding<'a> {
+    pub fn new(
+        binding: &'a vk::VertexInputBindingDescription,
+        attributes: &'a mut Vec<vk::VertexInputAttributeDescription>,
+    ) -> VertexBinding<'a> {
         VertexBinding {
             binding,
             attributes,
         }
     }
-    pub fn add_attribute(&mut self, location: u32, offset: u32, format: AttributeFormat) -> &mut Self {
+    pub fn add_attribute(
+        &mut self,
+        location: u32,
+        offset: u32,
+        format: AttributeFormat,
+    ) -> &mut Self {
         // binding
         let builder = vk::VertexInputAttributeDescriptionBuilder::new();
         builder.binding(self.binding.binding);
@@ -115,6 +119,9 @@ impl<'a> VertexInputSettings<'a> {
             .stride(stride)
             .build();
         self.vertex_bindings.push(binding);
-        VertexBinding::new(&self.vertex_bindings[self.vertex_bindings.len() - 1], &mut self.vertex_attributes)
+        VertexBinding::new(
+            &self.vertex_bindings[self.vertex_bindings.len() - 1],
+            &mut self.vertex_attributes,
+        )
     }
 }

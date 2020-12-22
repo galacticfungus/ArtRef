@@ -29,14 +29,16 @@ impl From<u32> for KhronosVendor {
     }
 }
 
-impl std::fmt::Display for KhronosVendor {    
+impl std::fmt::Display for KhronosVendor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
         match self {
             KhronosVendor::Vivante => f.write_str("Vivante "),
             KhronosVendor::VeriSilicon => f.write_str("VeriSilicon"),
             KhronosVendor::KazanSoftwareRenderer => f.write_str("Kazan Software Renderer"),
             KhronosVendor::CodePlay => f.write_str("Codeplay Software Ltd"),
-            KhronosVendor::Unknown(value) => f.write_fmt(format_args!("Unknown Khronos Vendor: {:#x}", value)),
+            KhronosVendor::Unknown(value) => {
+                f.write_fmt(format_args!("Unknown Khronos Vendor: {:#x}", value))
+            }
         }
     }
 }
@@ -59,7 +61,7 @@ impl From<u32> for PciVendor {
 }
 
 impl std::default::Default for PciVendor {
-    fn default() -> Self { 
+    fn default() -> Self {
         PciVendor::Default
     }
 }
@@ -75,7 +77,6 @@ impl std::fmt::Display for PciVendor {
             }
             PciVendor::KhronosId(id) => f.write_fmt(format_args!("Khronos ID: {}", id)),
             PciVendor::Default => f.write_fmt(format_args!("Default Test Vendor")),
-            
         }
     }
 }

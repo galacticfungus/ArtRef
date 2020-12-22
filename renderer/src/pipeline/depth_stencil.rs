@@ -1,12 +1,15 @@
-use crate::{ConfigurePipeline};
-use super::DepthStencilSettings;
-use erupt::vk1_0 as vk;
 use super::traits::ConfigureDepthStencil;
+use super::DepthStencilSettings;
+use crate::ConfigurePipeline;
+use erupt::vk1_0 as vk;
 
 // TODO: This is not required so can be completely skipped
 
 impl<'a> ConfigureDepthStencil for ConfigurePipeline<'a> {
-    fn configure_depthstencil(&mut self, configure_depthstencil: &mut dyn FnMut(&mut DepthStencilSettings)) -> &mut dyn super::traits::ConfigureColorBlending {
+    fn configure_depthstencil(
+        &mut self,
+        configure_depthstencil: &mut dyn FnMut(&mut DepthStencilSettings),
+    ) -> &mut dyn super::traits::ConfigureColorBlending {
         let mut pipeline_state = vk::PipelineDepthStencilStateCreateInfoBuilder::new();
         let mut settings = DepthStencilSettings::new(&mut pipeline_state);
         configure_depthstencil(&mut settings);
@@ -15,10 +18,10 @@ impl<'a> ConfigureDepthStencil for ConfigurePipeline<'a> {
 }
 
 impl<'a, 'b: 'a> DepthStencilSettings<'a, 'b> {
-    pub fn new(settings: &'a mut vk::PipelineDepthStencilStateCreateInfoBuilder<'b>) -> DepthStencilSettings<'a, 'b> {
-        DepthStencilSettings {
-            settings,
-        }
+    pub fn new(
+        settings: &'a mut vk::PipelineDepthStencilStateCreateInfoBuilder<'b>,
+    ) -> DepthStencilSettings<'a, 'b> {
+        DepthStencilSettings { settings }
     }
 
     pub fn enable_stencil_test(&mut self, enable_test: bool) {

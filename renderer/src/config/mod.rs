@@ -2,13 +2,15 @@ mod device;
 mod extensions;
 mod queue;
 
-pub use extensions::DeviceExtensions;
-use super::{QueueFamily, DeviceQueue, PciVendor, Features, Feature, ExtensionManager, RendererQueues, OperationQueue, RendererQueuesBuilder};
+use super::{
+    DeviceQueue, ExtensionManager, Feature, Features, OperationQueue, PciVendor, QueueFamily,
+    RendererQueues, RendererQueuesBuilder,
+};
 use crate::Version;
-use erupt::vk1_0 as vk;
 use erupt::extensions::khr_surface as surface;
+use erupt::vk1_0 as vk;
+pub use extensions::DeviceExtensions;
 use std::collections::HashMap;
-
 
 // Responsible for configuring the underlying device, creating queues, enabling features, loading device extensions and specifying surface parameters
 pub struct ConfigureDevice<'a> {
